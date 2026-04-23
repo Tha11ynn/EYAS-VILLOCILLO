@@ -22,7 +22,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     static final int   JUMP_BUFFER  = 8;
 
     // ── Game States ─────────────────────────────────────────
-    enum State { MENU, PLAYING, DEAD, WIN_LEVEL, WIN_GAME }
+    enum State { MENU, PLAYING, PAUSED, DEAD, WIN_LEVEL, WIN_GAME }
     State state = State.MENU;
 
     int currentLevel = 0;
@@ -45,15 +45,23 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ── Camera ───────────────────────────────────────────────
     float camX = 0;
 
+    // ── Pause Menu ───────────────────────────────────────────
+    int pauseSel = 0;
+    // 0 = Resume, 1 = Restart, 2 = Volume, 3 = Quit to Menu
+    static final String[] PAUSE_OPTIONS = { "▶  RESUME", "↺  RESTART LEVEL", "♪  VOLUME", "⌂  QUIT TO MENU" };
+    // Volume: 0–100, used as a % (ready to hook into Clip FloatControl)
+    int volume = 80;
+    boolean adjustingVolume = false;
+
     // ── Tutorial System ──────────────────────────────────────
     static class TutorialCard {
-        int triggerX;      // world X — card appears when player passes this X
+        int triggerX;
         String title;
         String[] lines;
         Color accentColor;
         boolean shown = false;
-        int displayTimer = 0;        // counts up while visible
-        static final int DISPLAY_TICKS = 260; // ~4.3 seconds at 60fps
+        int displayTimer = 0;
+        static final int DISPLAY_TICKS = 260;
         TutorialCard(int tx, String title, Color accent, String... lines) {
             this.triggerX = tx; this.title = title;
             this.accentColor = accent; this.lines = lines;
@@ -229,6 +237,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         coyoteTimer=0; jumpBufferTimer=0;
         winTimer=0; levelTimer=0; hintIndex=0;
         hintVisible=false; hintFadeTimer=0;
+        leftDown=false; rightDown=false; jumpDown=false; jumpConsumed=false;
 
         switch(lvl) {
             case 0 -> buildLevel1();
@@ -240,121 +249,74 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         state = State.PLAYING;
     }
 
-    // ── LEVEL 1: Tutorial — introduces each trap one by one ──
+    // ── LEVEL 1: Tutorial ────────────────────────────────────
     void buildLevel1() {
         levelW = 3400;
-
-        // ── ZONE 0: Safe start ───────────────────────────────
         addPlatform(0,   H-50, 500, 50);
-
-        // ── ZONE 1: Gap intro ───────────────────────────────
         addPlatform(560, H-50, 300, 50);
         addPlatform(920, H-50, 300, 50);
-
-        // ── ZONE 2: Spike intro ─────────────────────────────
         addPlatform(1290, H-50, 320, 50);
         addSpikes(1430, H-65, 2, 15);
-
-        // ── ZONE 3: Fake platform intro ─────────────────────
         addPlatform(1680, H-50, 300, 50);
         addPlatform(1680, 380, 110, 15);
         Platform fake1 = addPlatform(1860, 380, 110, 15); fake1.fake = true;
-
-        // ── ZONE 4: Bouncy platform intro ───────────────────
         addPlatform(2030, H-50, 300, 50);
         Platform b1 = addPlatform(2080, 370, 100, 15); b1.bouncy = true;
         addPlatform(2220, 220, 140, 15);
-
-        // ── ZONE 5: Moving platform intro ───────────────────
         addPlatform(2350, H-50, 280, 50);
         Platform m1 = addPlatform(2460, 360, 110, 15);
         m1.moving=true; m1.mx=2460; m1.mrange=100; m1.mspeed=1.3f;
         addPlatform(2620, H-50, 200, 50);
-
-        // ── ZONE 6: Invisible platform intro ────────────────
         addPlatform(2880, H-50, 220, 50);
         Platform inv1 = addPlatform(2960, 360, 110, 15); inv1.invisible = true;
-
-        // ── ZONE 7: Appearing hole intro ────────────────────
         addPlatform(3060, H-50, 240, 50);
         int pIdx = findPlatformAt(3060, H-50);
         if(pIdx >= 0) addHole(pIdx, 80, 35, 200);
-
-        // ── ZONE 8: Cannon intro ─────────────────────────────
         addPlatform(3160, H-50, 250, 50);
         cannons.add(new Cannon(3180, H-90, false, 150));
-
         addPlatform(3260, H-50, 300, 50);
 
-        // ── TUTORIAL CARDS ───────────────────────────────────
-        tutCards.add(new TutorialCard(20,
-            "MOVEMENT",
-            new Color(100, 200, 255),
+        tutCards.add(new TutorialCard(20, "MOVEMENT", new Color(100, 200, 255),
             "A / D  or  ← →   to move",
             "SPACE / W / ↑  to jump",
-            "R to restart   ESC for menu"
-        ));
-        tutCards.add(new TutorialCard(460,
-            "GAPS",
-            new Color(255, 200, 80),
+            "ESC to pause   R to restart"));
+        tutCards.add(new TutorialCard(460, "GAPS", new Color(255, 200, 80),
             "Some platforms don't connect.",
             "Jump across gaps — they're all",
-            "reachable with a normal jump!"
-        ));
-        tutCards.add(new TutorialCard(1220,
-            "SPIKES  ⚠",
-            new Color(255, 100, 100),
+            "reachable with a normal jump!"));
+        tutCards.add(new TutorialCard(1220, "SPIKES  ⚠", new Color(255, 100, 100),
             "White triangles = instant death.",
             "Jump OVER them or go around.",
-            "They're always avoidable!"
-        ));
-        tutCards.add(new TutorialCard(1610,
-            "FAKE PLATFORMS",
-            new Color(180, 100, 255),
+            "They're always avoidable!"));
+        tutCards.add(new TutorialCard(1610, "FAKE PLATFORMS", new Color(180, 100, 255),
             "Purple/blinking platforms CRUMBLE",
             "when you step on them!",
-            "Watch for the purple blink."
-        ));
-        tutCards.add(new TutorialCard(1980,
-            "BOUNCY PADS  ↑↑",
-            new Color(80, 220, 255),
+            "Watch for the purple blink."));
+        tutCards.add(new TutorialCard(1980, "BOUNCY PADS  ↑↑", new Color(80, 220, 255),
             "Cyan platforms with ↑↑ launch",
             "you super high. Use them to reach",
-            "upper ledges — don't panic!"
-        ));
-        tutCards.add(new TutorialCard(2360,
-            "MOVING PLATFORMS",
-            new Color(100, 255, 160),
+            "upper ledges — don't panic!"));
+        tutCards.add(new TutorialCard(2360, "MOVING PLATFORMS", new Color(100, 255, 160),
             "Some platforms slide back and forth.",
             "Wait for them to come to you,",
-            "then ride them to the next gap."
-        ));
-        tutCards.add(new TutorialCard(2820,
-            "INVISIBLE PLATFORMS",
-            new Color(200, 170, 255),
+            "then ride them to the next gap."));
+        tutCards.add(new TutorialCard(2820, "INVISIBLE PLATFORMS", new Color(200, 170, 255),
             "Some platforms are near-invisible!",
             "Look for faint sparkles ✦",
-            "Step carefully — they're solid."
-        ));
-        tutCards.add(new TutorialCard(3010,
-            "APPEARING HOLES  ⚠",
-            new Color(255, 180, 50),
+            "Step carefully — they're solid."));
+        tutCards.add(new TutorialCard(3010, "APPEARING HOLES  ⚠", new Color(255, 180, 50),
             "Platforms can develop HOLES!",
             "A yellow flash warns you first.",
-            "Move off it before it opens!"
-        ));
-        tutCards.add(new TutorialCard(3110,
-            "CANNONS  💥",
-            new Color(255, 120, 60),
+            "Move off it before it opens!"));
+        tutCards.add(new TutorialCard(3110, "CANNONS  💥", new Color(255, 120, 60),
             "Cannons fire on a rhythm.",
             "Watch the timing — wait for",
-            "the gap, then run through!"
-        ));
+            "the gap, then run through!"));
 
         goalX = 3350; goalY = H-110;
     }
 
-    // ── LEVEL 2: "Getting There" ──────────────────────────────
+    // ── LEVEL 2 ──────────────────────────────────────────────
     void buildLevel2() {
         levelW = 3200;
         addPlatform(0,   H-50, 280, 50);
@@ -367,174 +329,115 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         addPlatform(2020,H-50, 180, 50);
         addPlatform(2300,H-50, 200, 50);
         addPlatform(2600,H-50, 600, 50);
-
         Platform m1 = addPlatform(350, 350, 110, 15);
         m1.moving=true; m1.mx=350; m1.mrange=120; m1.mspeed=1.5f;
-
         addPlatform(660, 300, 100, 15);
         Platform f1 = addPlatform(830, 320, 100, 15); f1.fake=true;
-
         Platform b1 = addPlatform(950, 330, 90, 15); b1.bouncy=true;
         addPlatform(1100, 200, 110, 15);
-
         Platform inv1 = addPlatform(1240, 340, 100, 15); inv1.invisible=true;
-
         Platform m2 = addPlatform(1500, 310, 90, 15);
         m2.moving=true; m2.mx=1500; m2.mrange=130; m2.mspeed=1.8f;
-
         Platform shift1 = addPlatform(1770, 340, 110, 15);
         shift1.shiftOnStep=true; shift1.shiftDist=100;
-
         addPlatform(1970, 280, 100, 15);
         Platform f2 = addPlatform(2140, 310, 90, 15); f2.fake=true;
-
         Platform b2 = addPlatform(2350, 330, 90, 15); b2.bouncy=true;
         addPlatform(2480, 200, 110, 15);
-
         addSpikeChasing(200, H-65, 15, 1.2f);
-
-        addSpikes(345, H-65, 2, 15);
-        addSpikes(645, H-65, 2, 15);
-        addSpikes(905, H-65, 2, 15);
-        addSpikes(1185,H-65, 2, 15);
-        addSpikes(1745,H-65, 2, 15);
-        addSpikes(2025,H-65, 2, 15);
-
-        int p1 = findPlatformAt(900, H-50);
-        if(p1>=0) addHole(p1, 70, 30, 200);
-        int p2 = findPlatformAt(1740, H-50);
-        if(p2>=0) addHole(p2, 50, 30, 180);
-
+        addSpikes(345, H-65, 2, 15); addSpikes(645, H-65, 2, 15);
+        addSpikes(905, H-65, 2, 15); addSpikes(1185,H-65, 2, 15);
+        addSpikes(1745,H-65, 2, 15); addSpikes(2025,H-65, 2, 15);
+        int p1 = findPlatformAt(900, H-50); if(p1>=0) addHole(p1, 70, 30, 200);
+        int p2 = findPlatformAt(1740, H-50); if(p2>=0) addHole(p2, 50, 30, 180);
         cannons.add(new Cannon(640,  H-90, false, 120));
         cannons.add(new Cannon(1470, H-90, false, 100));
         cannons.add(new Cannon(2300, H-90, false, 110));
-
         goalX = 2800; goalY = H-110;
     }
 
-    // ── LEVEL 3: "Troll Central" ──────────────────────────────
+    // ── LEVEL 3 ──────────────────────────────────────────────
     void buildLevel3() {
         levelW = 3600;
-        addPlatform(0,   H-50, 220, 50);
-        addPlatform(290, H-50, 180, 50);
-        addPlatform(560, H-50, 160, 50);
-        addPlatform(820, H-50, 180, 50);
-        addPlatform(1100,H-50, 160, 50);
-        addPlatform(1360,H-50, 180, 50);
-        addPlatform(1640,H-50, 160, 50);
-        addPlatform(1900,H-50, 180, 50);
-        addPlatform(2180,H-50, 160, 50);
-        addPlatform(2460,H-50, 180, 50);
-        addPlatform(2740,H-50, 160, 50);
-        addPlatform(3020,H-50, 180, 50);
+        addPlatform(0,   H-50, 220, 50); addPlatform(290, H-50, 180, 50);
+        addPlatform(560, H-50, 160, 50); addPlatform(820, H-50, 180, 50);
+        addPlatform(1100,H-50, 160, 50); addPlatform(1360,H-50, 180, 50);
+        addPlatform(1640,H-50, 160, 50); addPlatform(1900,H-50, 180, 50);
+        addPlatform(2180,H-50, 160, 50); addPlatform(2460,H-50, 180, 50);
+        addPlatform(2740,H-50, 160, 50); addPlatform(3020,H-50, 180, 50);
         addPlatform(3300,H-50, 300, 50);
-
         Platform m1 = addPlatform(300, 360, 110, 15);
         m1.moving=true; m1.mx=300; m1.mrange=140; m1.mspeed=1.8f;
-
         Platform inv1 = addPlatform(500, 330, 110, 15); inv1.invisible=true;
         Platform f1   = addPlatform(660, 310, 100, 15); f1.fake=true;
         addPlatform(870, 290, 110, 15);
-
         Platform shift1 = addPlatform(1000, 340, 110, 15);
         shift1.shiftOnStep=true; shift1.shiftDist=120;
-
         Platform b1 = addPlatform(1150, 330, 90, 15); b1.bouncy=true;
         addPlatform(1300, 190, 120, 15);
-
         Platform m2 = addPlatform(1440, 310, 100, 15);
         m2.moving=true; m2.mx=1440; m2.mrange=150; m2.mspeed=2.2f;
-
         Platform inv2 = addPlatform(1680, 340, 100, 15); inv2.invisible=true;
         Platform f2   = addPlatform(1820, 310, 90, 15); f2.fake=true;
         addPlatform(1980, 280, 110, 15);
-
         Platform shift2 = addPlatform(2120, 340, 100, 15);
         shift2.shiftOnStep=true; shift2.shiftDist=-120;
-
         Platform b2 = addPlatform(2350, 320, 90, 15); b2.bouncy=true;
         addPlatform(2480, 180, 110, 15);
-
         Platform m3 = addPlatform(2640, 300, 100, 15);
         m3.moving=true; m3.mx=2640; m3.mrange=160; m3.mspeed=2.5f;
-
         addPlatform(2900, 260, 110, 15);
-
         addSpikeChasing(300, H-65, 15, 1.8f);
-
         int p1 = findPlatformAt(820, H-50);   if(p1>=0) addHole(p1,60,35,160);
         int p2 = findPlatformAt(1640, H-50);  if(p2>=0) addHole(p2,50,35,160);
         int p3 = findPlatformAt(2460, H-50);  if(p3>=0) addHole(p3,70,35,160);
-
         addSpikes(295, H-65,2,15); addSpikes(565, H-65,2,15);
         addSpikes(825, H-65,2,15); addSpikes(1105,H-65,2,15);
         addSpikes(1645,H-65,2,15); addSpikes(1905,H-65,2,15);
         addSpikes(2745,H-65,2,15); addSpikes(3025,H-65,2,15);
-
         cannons.add(new Cannon(560,  H-90, false, 100));
         cannons.add(new Cannon(1100, H-90, false, 90));
         cannons.add(new Cannon(1900, H-90, false, 85));
         cannons.add(new Cannon(2740, H-90, true,  95));
-
         goalX = 3400; goalY = H-110;
     }
 
-    // ── LEVEL 4: "Almost There" ───────────────────────────────
+    // ── LEVEL 4 ──────────────────────────────────────────────
     void buildLevel4() {
         levelW = 4000;
-        addPlatform(0,   H-50, 180, 50);
-        addPlatform(260, H-50, 160, 50);
-        addPlatform(520, H-50, 160, 50);
-        addPlatform(790, H-50, 160, 50);
-        addPlatform(1060,H-50, 160, 50);
-        addPlatform(1330,H-50, 160, 50);
-        addPlatform(1600,H-50, 160, 50);
-        addPlatform(1870,H-50, 160, 50);
-        addPlatform(2150,H-50, 160, 50);
-        addPlatform(2430,H-50, 160, 50);
-        addPlatform(2710,H-50, 160, 50);
-        addPlatform(2990,H-50, 160, 50);
-        addPlatform(3270,H-50, 160, 50);
-        addPlatform(3550,H-50, 450, 50);
-
+        addPlatform(0,   H-50, 180, 50); addPlatform(260, H-50, 160, 50);
+        addPlatform(520, H-50, 160, 50); addPlatform(790, H-50, 160, 50);
+        addPlatform(1060,H-50, 160, 50); addPlatform(1330,H-50, 160, 50);
+        addPlatform(1600,H-50, 160, 50); addPlatform(1870,H-50, 160, 50);
+        addPlatform(2150,H-50, 160, 50); addPlatform(2430,H-50, 160, 50);
+        addPlatform(2710,H-50, 160, 50); addPlatform(2990,H-50, 160, 50);
+        addPlatform(3270,H-50, 160, 50); addPlatform(3550,H-50, 450, 50);
         Platform m1 = addPlatform(280, 360, 100, 15);
         m1.moving=true; m1.mx=280; m1.mrange=130; m1.mspeed=2.0f;
-
         Platform inv1 = addPlatform(490, 340, 100, 15); inv1.invisible=true;
         Platform f1   = addPlatform(680, 310, 95, 15); f1.fake=true;
         addPlatform(870, 290, 100, 15);
-
         Platform b1 = addPlatform(1000, 330, 90, 15); b1.bouncy=true;
         addPlatform(1150, 190, 120, 15);
-
         Platform shift1 = addPlatform(1280, 350, 100, 15);
         shift1.shiftOnStep=true; shift1.shiftDist=130;
-
         Platform m2 = addPlatform(1480, 310, 100, 15);
         m2.moving=true; m2.mx=1480; m2.mrange=160; m2.mspeed=2.4f;
-
         Platform inv2 = addPlatform(1680, 350, 100, 15); inv2.invisible=true;
         Platform f2   = addPlatform(1850, 310, 90, 15); f2.fake=true;
         addPlatform(2040, 280, 100, 15);
-
         Platform b2 = addPlatform(2220, 330, 90, 15); b2.bouncy=true;
         addPlatform(2360, 170, 110, 15);
-
         Platform m3 = addPlatform(2530, 300, 95, 15);
         m3.moving=true; m3.mx=2530; m3.mrange=170; m3.mspeed=2.8f;
-
         Platform shift2 = addPlatform(2730, 350, 100, 15);
         shift2.shiftOnStep=true; shift2.shiftDist=-140;
-
         Platform inv3 = addPlatform(2900, 330, 100, 15); inv3.invisible=true;
         addPlatform(3060, 280, 110, 15);
-
         Platform b3 = addPlatform(3200, 330, 90, 15); b3.bouncy=true;
         addPlatform(3350, 160, 120, 15);
-
         addSpikeChasing(150, H-65, 15, 1.5f);
         addSpikeChasing(2200, H-65, 15, 2.0f);
-
         int[] hi = {2,4,6,8,10};
         for(int i : hi) {
             if(i < platforms.size()) {
@@ -542,155 +445,60 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 if(pf.w >= 100) addHole(i, pf.w/3, 30, 150);
             }
         }
-
         addSpikes(265, H-65,2,15); addSpikes(525, H-65,2,15);
         addSpikes(795, H-65,2,15); addSpikes(1065,H-65,2,15);
         addSpikes(1335,H-65,2,15); addSpikes(1605,H-65,2,15);
         addSpikes(1875,H-65,2,15); addSpikes(2155,H-65,2,15);
-
         cannons.add(new Cannon(520,  H-90, false, 90));
         cannons.add(new Cannon(1060, H-90, false, 80));
         cannons.add(new Cannon(1600, H-90, false, 75));
         cannons.add(new Cannon(2150, H-90, true,  85));
         cannons.add(new Cannon(2710, H-90, false, 70));
         cannons.add(new Cannon(3270, H-90, true,  80));
-
         goalX = 3700; goalY = H-110;
     }
 
-    // ── LEVEL 5: "The Grand Finale" ───────────────────────────
-    //
-    // Design philosophy:
-    //   • Ground platforms are generously wide (200px) with moderate gaps (80-100px) —
-    //     all jumpable without stress.
-    //   • Each floating platform sits exactly one jump above its ground platform and
-    //     is spaced so the player lands cleanly on the next ground platform if they
-    //     choose NOT to use it — using a floater is always optional / a shortcut.
-    //   • Chasing spike starts 600px behind the player so there's a clear head-start.
-    //     It only catches up if the player stands still for several seconds.
-    //   • Hazard density increases gently: first third is mostly gaps + one fake;
-    //     middle third adds moving/invisible/shift; final third adds cannons + holes.
-    //   • A wide safe "finish line" platform gives the player breathing room before
-    //     the goal.
-    //
+    // ── LEVEL 5 ──────────────────────────────────────────────
     void buildLevel5() {
         levelW = 4200;
-
-        // ── GROUND LAYOUT ────────────────────────────────────
-        // Consistent 200px wide ground pads, gaps of 80-100px.
-        // Player starts on pad 0 at x=0.
-
-        // Pad 0 — Start (wide, safe)
         addPlatform(0,    H-50, 260, 50);
-
-        // Pad 1
-        addPlatform(360,  H-50, 200, 50);
-        // Pad 2
-        addPlatform(640,  H-50, 200, 50);
-        // Pad 3
-        addPlatform(920,  H-50, 200, 50);
-        // Pad 4
-        addPlatform(1200, H-50, 200, 50);
-        // Pad 5
-        addPlatform(1480, H-50, 200, 50);
-        // Pad 6
-        addPlatform(1760, H-50, 200, 50);
-        // Pad 7
-        addPlatform(2040, H-50, 200, 50);
-        // Pad 8
-        addPlatform(2320, H-50, 200, 50);
-        // Pad 9
-        addPlatform(2600, H-50, 200, 50);
-        // Pad 10
-        addPlatform(2880, H-50, 200, 50);
-        // Pad 11
-        addPlatform(3160, H-50, 200, 50);
-        // Pad 12
-        addPlatform(3440, H-50, 200, 50);
-
-        // Finish line — very wide, completely safe
+        addPlatform(360,  H-50, 200, 50); addPlatform(640,  H-50, 200, 50);
+        addPlatform(920,  H-50, 200, 50); addPlatform(1200, H-50, 200, 50);
+        addPlatform(1480, H-50, 200, 50); addPlatform(1760, H-50, 200, 50);
+        addPlatform(2040, H-50, 200, 50); addPlatform(2320, H-50, 200, 50);
+        addPlatform(2600, H-50, 200, 50); addPlatform(2880, H-50, 200, 50);
+        addPlatform(3160, H-50, 200, 50); addPlatform(3440, H-50, 200, 50);
         addPlatform(3720, H-50, 480, 50);
-
-        // ── FLOATING PLATFORMS ───────────────────────────────
-        // Each sits at y = H-180 (one clear jump above ground).
-        // Positioned centered above the GAP between two ground pads,
-        // so landing on it then jumping lands neatly on the next ground pad.
-        // Using the floater is optional — the ground path always works.
-
-        // Between pad 1 and 2 — solid floater (safe, just a shortcut)
         addPlatform(460, H-180, 120, 15);
-
-        // Between pad 2 and 3 — BOUNCY (launches player over the spike on pad 3)
         Platform b1 = addPlatform(740, H-180, 120, 15); b1.bouncy = true;
-        // Upper landing pad after bouncy — gives the player somewhere to go
         addPlatform(820, H-280, 130, 15);
-
-        // Between pad 3 and 4 — FAKE (visual troll; ground path underneath is safe)
         Platform fake1 = addPlatform(1020, H-180, 120, 15); fake1.fake = true;
-
-        // Between pad 4 and 5 — MOVING (rhythm challenge; lands on pad 5)
         Platform mov1 = addPlatform(1300, H-180, 110, 15);
         mov1.moving = true; mov1.mx = 1300; mov1.mrange = 110; mov1.mspeed = 1.6f;
-
-        // Between pad 5 and 6 — INVISIBLE (sparkles hint its position above the gap)
         Platform inv1 = addPlatform(1580, H-180, 120, 15); inv1.invisible = true;
-
-        // Between pad 6 and 7 — SHIFT (shifts right, player should jump immediately)
         Platform shift1 = addPlatform(1860, H-180, 120, 15);
         shift1.shiftOnStep = true; shift1.shiftDist = 110;
-
-        // Between pad 7 and 8 — MOVING (faster, second moving challenge)
         Platform mov2 = addPlatform(2140, H-180, 110, 15);
         mov2.moving = true; mov2.mx = 2140; mov2.mrange = 120; mov2.mspeed = 2.0f;
-
-        // Between pad 8 and 9 — BOUNCY (skip the hole that appears on pad 9)
         Platform b2 = addPlatform(2420, H-180, 120, 15); b2.bouncy = true;
-        addPlatform(2500, H-280, 130, 15); // upper landing for bouncy
-
-        // Between pad 9 and 10 — INVISIBLE (second invisible challenge)
+        addPlatform(2500, H-280, 130, 15);
         Platform inv2 = addPlatform(2700, H-180, 120, 15); inv2.invisible = true;
-
-        // Between pad 10 and 11 — SHIFT (shifts left this time)
         Platform shift2 = addPlatform(2980, H-180, 120, 15);
         shift2.shiftOnStep = true; shift2.shiftDist = -110;
-
-        // Between pad 11 and 12 — MOVING + higher (final floater challenge)
         Platform mov3 = addPlatform(3260, H-190, 100, 15);
         mov3.moving = true; mov3.mx = 3260; mov3.mrange = 100; mov3.mspeed = 2.2f;
-
-        // ── SPIKES ───────────────────────────────────────────
-        // Ground spikes sit near the FRONT edge of a pad — easy to jump over,
-        // but punish careless landings from a previous gap.
-
-        addSpikes(370,  H-65, 2, 15);   // front of pad 1
-        addSpikes(930,  H-65, 2, 15);   // front of pad 3 (under the fake floater)
-        addSpikes(1210, H-65, 2, 15);   // front of pad 4
-        addSpikes(1770, H-65, 2, 15);   // front of pad 6
-        addSpikes(2050, H-65, 2, 15);   // front of pad 7
-        addSpikes(2610, H-65, 2, 15);   // front of pad 9 (bouncy skips this!)
-        addSpikes(2890, H-65, 2, 15);   // front of pad 10
-        addSpikes(3170, H-65, 2, 15);   // front of pad 11
-
-        // ── CHASING SPIKE ────────────────────────────────────
-        // Spawns 600px behind start — player has a large head-start.
-        // Speed 1.4 means it only catches up if you idle for ~8 seconds.
+        addSpikes(370,  H-65, 2, 15); addSpikes(930,  H-65, 2, 15);
+        addSpikes(1210, H-65, 2, 15); addSpikes(1770, H-65, 2, 15);
+        addSpikes(2050, H-65, 2, 15); addSpikes(2610, H-65, 2, 15);
+        addSpikes(2890, H-65, 2, 15); addSpikes(3170, H-65, 2, 15);
         addSpikeChasing(-600, H-65, 15, 1.4f);
-
-        // ── APPEARING HOLES ──────────────────────────────────
-        // Only on every other pad in the second half — gives the player
-        // time to read the warning flash and move on.
-        int p7  = findPlatformAt(2040, H-50);  if(p7  >= 0) addHole(p7,  70, 35, 180);
-        int p9  = findPlatformAt(2600, H-50);  if(p9  >= 0) addHole(p9,  60, 35, 160);
-        int p11 = findPlatformAt(3160, H-50);  if(p11 >= 0) addHole(p11, 65, 35, 170);
-
-        // ── CANNONS ──────────────────────────────────────────
-        // Only in the second half; fire rates are moderate (not frantic).
-        // Each cannon is on a different pad so the player has a breather between them.
-        cannons.add(new Cannon(1480, H-90, false, 110)); // pad 5
-        cannons.add(new Cannon(2320, H-90, true,  100)); // pad 8, faces right (fires toward pad 9)
-        cannons.add(new Cannon(2880, H-90, false,  95)); // pad 10
-        cannons.add(new Cannon(3440, H-90, false,  90)); // pad 12 (last real challenge before finish)
-
+        int p7  = findPlatformAt(2040, H-50); if(p7  >= 0) addHole(p7,  70, 35, 180);
+        int p9  = findPlatformAt(2600, H-50); if(p9  >= 0) addHole(p9,  60, 35, 160);
+        int p11 = findPlatformAt(3160, H-50); if(p11 >= 0) addHole(p11, 65, 35, 170);
+        cannons.add(new Cannon(1480, H-90, false, 110));
+        cannons.add(new Cannon(2320, H-90, true,  100));
+        cannons.add(new Cannon(2880, H-90, false,  95));
+        cannons.add(new Cannon(3440, H-90, false,  90));
         goalX = 3900; goalY = H-110;
     }
 
@@ -741,15 +549,10 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     void update() {
         levelTimer++;
 
-        // ── Tutorial card triggers ────────────────────────────
-        if(currentLevel == 0) {
-            updateTutorialCards();
-        }
+        if(currentLevel == 0) updateTutorialCards();
 
-        // ── Hint System ──────────────────────────────────────
         if(levelTimer % HINT_DELAY == 0 && hintIndex < 5) {
-            hintVisible = true;
-            hintFadeTimer = 300;
+            hintVisible = true; hintFadeTimer = 300;
         }
         if(hintVisible) {
             hintFadeTimer--;
@@ -759,11 +562,9 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── Jump buffer ──────────────────────────────────────
         if(jumpDown) jumpBufferTimer = JUMP_BUFFER;
         else if(jumpBufferTimer > 0) jumpBufferTimer--;
 
-        // ── Horizontal movement ──────────────────────────────
         float targetVX = 0;
         if(leftDown)       { targetVX = -MOVE_SPD; facingRight=false; }
         else if(rightDown) { targetVX =  MOVE_SPD; facingRight=true; }
@@ -777,13 +578,11 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
         if(Math.abs(pvx) < 0.08f) pvx = 0;
 
-        // ── Coyote time ──────────────────────────────────────
         if(onGround) coyoteTimer = COYOTE_TIME;
         else if(coyoteTimer > 0) coyoteTimer--;
 
         wasOnGround = onGround;
 
-        // ── Jump ─────────────────────────────────────────────
         boolean canJump = coyoteTimer > 0 && !jumpConsumed;
         if(jumpBufferTimer > 0 && canJump) {
             pvy = JUMP_VEL;
@@ -802,7 +601,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if(px > levelW - playerW) px = levelW - playerW;
         py += pvy;
 
-        // ── Update chasing spikes ─────────────────────────────
         for(Spike s : spikes) {
             if(!s.chasing) continue;
             float dist = px - s.cx;
@@ -814,7 +612,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             s.x = (int)s.cx;
         }
 
-        // ── Update moving platforms ───────────────────────────
         for(Platform p : platforms) {
             if(p.moving) {
                 p.x += p.mspeed * p.mdir;
@@ -827,9 +624,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
             if(p.shiftOnStep && p.shiftTriggered) {
                 p.shiftTimer++;
-                if(p.shiftTimer <= 20) {
-                    p.x += p.shiftDist / 20;
-                }
+                if(p.shiftTimer <= 20) p.x += p.shiftDist / 20;
             }
             if(p.invisible && p.revealTimer_active) {
                 p.revealFlash--;
@@ -837,7 +632,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── Update appearing holes ────────────────────────────
         for(AppearingHole h : holes) {
             if(!h.triggered) {
                 h.revealDelay--;
@@ -846,14 +640,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── Platform collision ────────────────────────────────
         onGround = false;
         Rectangle pr = new Rectangle((int)px, (int)py, playerW, playerH);
 
         for(int pIdx=0; pIdx<platforms.size(); pIdx++) {
             Platform p = platforms.get(pIdx);
             if(p.fake && p.fakeTimer > 50) continue;
-
             boolean inHole = false;
             for(AppearingHole h : holes) {
                 if(h.platformIndex == pIdx && h.active) {
@@ -864,18 +656,15 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 }
             }
             if(inHole) continue;
-
             Rectangle pl = p.rect();
             if(!pr.intersects(pl)) continue;
-
             if(pvy >= 0 && py + playerH - pvy <= pl.y + 8) {
                 py = pl.y - playerH;
                 if(p.bouncy) {
                     pvy = JUMP_VEL * 1.5f;
                     spawnBounceParticles((int)px, (int)py);
                 } else {
-                    pvy = 0;
-                    onGround = true;
+                    pvy = 0; onGround = true;
                     if(p.fake && !p.fakeTriggered) p.fakeTriggered = true;
                     if(p.shiftOnStep && !p.shiftTriggered) p.shiftTriggered = true;
                     if(p.invisible) { p.revealTimer_active=true; p.revealFlash=45; }
@@ -893,10 +682,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         pr = new Rectangle((int)px+3, (int)py+2, playerW-6, playerH-2);
         for(Spike s : spikes) {
             if(pr.intersects(s.rect())) {
-                if(s.chasing)
-                    killPlayer("Chasing spike caught up.", "They're faster than they look.", "RUN");
-                else
-                    killPlayer("Walked into a spike.", "Happens to everyone.", "OUCH");
+                if(s.chasing) killPlayer("Chasing spike caught up.", "They're faster than they look.", "RUN");
+                else          killPlayer("Walked into a spike.", "Happens to everyone.", "OUCH");
                 return;
             }
         }
@@ -938,21 +725,15 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── Tutorial card logic ───────────────────────────────────
     void updateTutorialCards() {
         if(activeTutCard != null) {
             activeTutCard.displayTimer++;
-            if(activeTutCard.displayTimer >= TutorialCard.DISPLAY_TICKS) {
-                activeTutCard = null;
-            }
+            if(activeTutCard.displayTimer >= TutorialCard.DISPLAY_TICKS) activeTutCard = null;
             return;
         }
         for(TutorialCard c : tutCards) {
             if(!c.shown && px >= c.triggerX) {
-                c.shown = true;
-                c.displayTimer = 0;
-                activeTutCard = c;
-                break;
+                c.shown = true; c.displayTimer = 0; activeTutCard = c; break;
             }
         }
     }
@@ -1012,6 +793,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         switch(state) {
             case MENU      -> drawMenu(g);
             case PLAYING   -> drawGame(g);
+            case PAUSED    -> { drawGame(g); drawPauseMenu(g); }
             case DEAD      -> { drawGame(g); drawDeathScreen(g); }
             case WIN_LEVEL -> { drawGame(g); drawWinLevel(g); }
             case WIN_GAME  -> drawWinGame(g);
@@ -1071,7 +853,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setPaint(new GradientPaint(0,0,new Color(15,5,30),0,H,new Color(35,15,60)));
         g.fillRect(0,0,W,H);
 
-        // Stars
         g.setColor(new Color(200,200,220,140));
         for(int i=0;i<80;i++){
             int sx = ((i*97+i*43) % levelW - cx/2 + levelW*2) % W;
@@ -1079,12 +860,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.fillRect(sx, sy, i%7==0?2:1, i%7==0?2:1);
         }
 
-        // ── Draw zone dividers on level 1 ────────────────────
-        if(currentLevel == 0) {
-            drawTutorialZoneMarkers(g, cx);
-        }
+        if(currentLevel == 0) drawTutorialZoneMarkers(g, cx);
 
-        // Platforms
         for(int pIdx=0; pIdx<platforms.size(); pIdx++) {
             Platform p = platforms.get(pIdx);
             int rx = p.x - cx;
@@ -1158,7 +935,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // Spikes
         for(Spike s : spikes) {
             int sx = s.x - cx;
             if(sx < -30 || sx > W+30) continue;
@@ -1178,14 +954,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.drawPolygon(xp,yp,3);
         }
 
-        // Cannons
         for(Cannon c : cannons) {
             int ccx = c.x - cx;
             if(ccx<-60||ccx>W+60) continue;
             drawCannon(g, ccx, c.y, c.facingRight);
         }
 
-        // Cannonballs
         for(Cannonball cb : cannonballs) {
             int bx = (int)(cb.x - cx);
             if(bx<-20||bx>W+20) continue;
@@ -1194,31 +968,127 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.setColor(new Color(100,100,100));  g.fillOval(bx-4,(int)cb.y-4,8,8);
         }
 
-        // Goal
         drawGoal(g, goalX-cx, goalY);
 
-        // Particles
         for(Particle p : particles) {
             float alpha = (float)p.life/p.maxLife;
             g.setColor(new Color(p.color.getRed(),p.color.getGreen(),p.color.getBlue(),(int)(alpha*255)));
             g.fillOval((int)(p.x-cx)-3,(int)p.y-3,6,6);
         }
 
-        // Player
-        if(state != State.DEAD)
+        if(state == State.PLAYING || state == State.PAUSED)
             drawPlayerChar(g,(int)(px-cx),(int)py,facingRight,onGround?(tick/6)%4:1);
 
         drawHUD(g);
 
-        // Tutorial card (level 1 only)
-        if(currentLevel == 0 && activeTutCard != null) {
-            drawTutorialCard(g, activeTutCard);
+        if(currentLevel == 0 && activeTutCard != null) drawTutorialCard(g, activeTutCard);
+        if(currentLevel > 0 && hintVisible && currentLevel < LEVEL_HINTS.length)
+            drawHint(g, LEVEL_HINTS[currentLevel][hintIndex], hintFadeTimer);
+    }
+
+    // ── PAUSE MENU ────────────────────────────────────────────
+    void drawPauseMenu(Graphics2D g) {
+        // Frosted overlay
+        g.setColor(new Color(0, 0, 0, 170));
+        g.fillRect(0, 0, W, H);
+
+        int pw = 420, ph = 310;
+        int panX = W/2 - pw/2, panY = H/2 - ph/2;
+
+        // Panel shadow
+        g.setColor(new Color(0, 0, 0, 100));
+        g.fillRoundRect(panX+6, panY+6, pw, ph, 20, 20);
+
+        // Panel background
+        g.setPaint(new GradientPaint(panX, panY, new Color(12, 8, 28, 245),
+            panX, panY+ph, new Color(22, 12, 45, 245)));
+        g.fillRoundRect(panX, panY, pw, ph, 20, 20);
+
+        // Border
+        g.setColor(new Color(120, 80, 200, 200));
+        g.setStroke(new BasicStroke(2f));
+        g.drawRoundRect(panX, panY, pw, ph, 20, 20);
+        g.setStroke(new BasicStroke(1f));
+
+        // Left accent bar
+        g.setColor(new Color(150, 80, 255, 200));
+        g.fillRoundRect(panX, panY+12, 5, ph-24, 4, 4);
+
+        // Title
+        g.setFont(new Font("Courier New", Font.BOLD, 28));
+        String title = "II  PAUSED";
+        drawShadowText(g, title,
+            W/2 - g.getFontMetrics().stringWidth(title)/2, panY + 44,
+            new Color(180, 130, 255), new Color(60, 20, 100));
+
+        // Divider
+        g.setColor(new Color(120, 80, 200, 80));
+        g.fillRect(panX + 20, panY + 54, pw - 40, 1);
+
+        // Menu options
+        int optStartY = panY + 90;
+        int optSpacing = 46;
+        for(int i = 0; i < PAUSE_OPTIONS.length; i++) {
+            boolean sel = (pauseSel == i);
+            int oy = optStartY + i * optSpacing;
+
+            if(sel) {
+                // Highlight bar
+                g.setColor(new Color(120, 80, 200, 50));
+                g.fillRoundRect(panX + 14, oy - 22, pw - 28, 34, 8, 8);
+                g.setColor(new Color(150, 100, 255, 130));
+                g.setStroke(new BasicStroke(1.5f));
+                g.drawRoundRect(panX + 14, oy - 22, pw - 28, 34, 8, 8);
+                g.setStroke(new BasicStroke(1f));
+                // Arrow indicator
+                g.setColor(new Color(255, 200, 80));
+                g.setFont(new Font("Courier New", Font.BOLD, 14));
+                g.drawString("›", panX + 22, oy + 2);
+            }
+
+            // Volume option: show slider instead of just label
+            if(i == 2) {
+                // Label
+                g.setFont(new Font("Courier New", Font.BOLD, sel ? 18 : 16));
+                g.setColor(sel ? new Color(255, 200, 80) : new Color(160, 140, 200));
+                g.drawString(PAUSE_OPTIONS[i], panX + 40, oy + 2);
+
+                // Volume bar
+                int barX = panX + 190, barY = oy - 10, barW = 180, barH = 10;
+                // Track
+                g.setColor(new Color(60, 40, 100));
+                g.fillRoundRect(barX, barY, barW, barH, 5, 5);
+                // Fill
+                int fillW = (int)(barW * (volume / 100.0));
+                Color barFill = sel ? new Color(200, 140, 255) : new Color(120, 80, 180);
+                g.setColor(barFill);
+                g.fillRoundRect(barX, barY, fillW, barH, 5, 5);
+                // Thumb
+                g.setColor(sel ? new Color(255, 220, 100) : new Color(200, 170, 255));
+                g.fillOval(barX + fillW - 7, barY - 3, 14, 14);
+                // Volume percent label
+                g.setFont(new Font("Courier New", Font.PLAIN, 11));
+                g.setColor(new Color(200, 180, 230));
+                g.drawString(volume + "%", barX + barW + 6, barY + 9);
+
+                // Adjustment hint if selected
+                if(sel) {
+                    g.setFont(new Font("Courier New", Font.PLAIN, 10));
+                    g.setColor(new Color(180, 160, 220, 180));
+                    g.drawString("← / → to adjust", barX, barY + 24);
+                }
+            } else {
+                g.setFont(new Font("Courier New", Font.BOLD, sel ? 18 : 16));
+                g.setColor(sel ? new Color(255, 200, 80) : new Color(160, 140, 200));
+                g.drawString(PAUSE_OPTIONS[i], panX + 40, oy + 2);
+            }
         }
 
-        // Hint (levels 2+)
-        if(currentLevel > 0 && hintVisible && currentLevel < LEVEL_HINTS.length) {
-            drawHint(g, LEVEL_HINTS[currentLevel][hintIndex], hintFadeTimer);
-        }
+        // Footer hint
+        g.setFont(new Font("Courier New", Font.PLAIN, 11));
+        g.setColor(new Color(140, 120, 180, 180));
+        String hint = "↑ ↓ : Navigate   ENTER / SPACE : Select   ESC : Resume";
+        g.drawString(hint, W/2 - g.getFontMetrics().stringWidth(hint)/2, panY + ph - 12);
     }
 
     // ── Tutorial zone section labels ─────────────────────────
@@ -1253,16 +1123,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         else if(progress > total - 30) alpha = (total - progress) / 30f;
         alpha = Math.max(0, Math.min(1, alpha));
 
-        int cardW = 390;
-        int lineH = 22;
+        int cardW = 390, lineH = 22;
         int numLines = card.lines.length;
         int cardH = 28 + 26 + numLines * lineH + 14;
-        int cardX = W/2 - cardW/2;
-        int cardY = 22;
+        int cardX = W/2 - cardW/2, cardY = 22;
 
         g.setColor(new Color(0,0,0,(int)(alpha*120)));
         g.fillRoundRect(cardX+4, cardY+4, cardW, cardH, 14, 14);
-
         g.setColor(new Color(8, 6, 20, (int)(alpha*230)));
         g.fillRoundRect(cardX, cardY, cardW, cardH, 14, 14);
 
@@ -1274,14 +1141,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha*180)));
         g.fillRoundRect(cardX, cardY, 6, cardH, 6, 6);
-
         g.setColor(new Color(ac.getRed()/5, ac.getGreen()/5, ac.getBlue()/5, (int)(alpha*180)));
         g.fillRoundRect(cardX+1, cardY+1, cardW-2, 26, 12, 12);
 
         g.setFont(new Font("Courier New", Font.BOLD, 14));
         g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha*255)));
-        String titleStr = "▸  " + card.title;
-        g.drawString(titleStr, cardX + 18, cardY + 18);
+        g.drawString("▸  " + card.title, cardX + 18, cardY + 18);
 
         int barW = cardW - 20;
         float pct = 1f - (float)progress / total;
@@ -1384,9 +1249,16 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.drawString("SCORE: "+totalScore,16,45);
         g.setColor(new Color(255,100,100));
         g.drawString("DEATHS: "+deaths,16,63);
+
+        // Pause hint (top-right)
+        g.setFont(new Font("Courier New",Font.PLAIN,11));
+        g.setColor(new Color(255,255,255,70));
+        String pauseHint = "ESC: Pause";
+        g.drawString(pauseHint, W - g.getFontMetrics().stringWidth(pauseHint) - 10, 20);
+
         g.setFont(new Font("Courier New",Font.PLAIN,11));
         g.setColor(new Color(255,255,255,90));
-        g.drawString("A/D: Move   SPACE: Jump   R: Restart   ESC: Menu",W/2-175,H-10);
+        g.drawString("A/D: Move   SPACE: Jump   R: Restart   ESC: Pause",W/2-190,H-10);
     }
 
     String getLevelName() {
@@ -1522,7 +1394,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     public void keyPressed(KeyEvent e) {
         int k = e.getKeyCode();
 
-        if(state==State.MENU){
+        // ── MAIN MENU ────────────────────────────────────────
+        if(state == State.MENU){
             if(k==KeyEvent.VK_UP  ||k==KeyEvent.VK_W) menuSel=Math.max(0,menuSel-1);
             if(k==KeyEvent.VK_DOWN||k==KeyEvent.VK_S) menuSel=Math.min(1,menuSel+1);
             if(k==KeyEvent.VK_ENTER||k==KeyEvent.VK_SPACE){
@@ -1531,16 +1404,109 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
             return;
         }
+
+        // ── WIN GAME ─────────────────────────────────────────
         if(state==State.WIN_GAME){
             if(k==KeyEvent.VK_ESCAPE){ state=State.MENU; particles.clear(); }
             return;
         }
 
+        // ── PAUSE MENU ───────────────────────────────────────
+        if(state == State.PAUSED) {
+            handlePauseKey(k);
+            return;
+        }
+
+        // ── PLAYING / DEAD ───────────────────────────────────
         if(k==KeyEvent.VK_A||k==KeyEvent.VK_LEFT)  leftDown=true;
         if(k==KeyEvent.VK_D||k==KeyEvent.VK_RIGHT) rightDown=true;
         if(k==KeyEvent.VK_SPACE||k==KeyEvent.VK_UP||k==KeyEvent.VK_W) jumpDown=true;
-        if(k==KeyEvent.VK_R) { if(state==State.DEAD||state==State.PLAYING) startLevel(currentLevel); }
-        if(k==KeyEvent.VK_ESCAPE){ state=State.MENU; particles.clear(); leftDown=rightDown=jumpDown=false; }
+        if(k==KeyEvent.VK_R) {
+            if(state==State.DEAD||state==State.PLAYING) startLevel(currentLevel);
+        }
+        if(k==KeyEvent.VK_ESCAPE) {
+            if(state==State.PLAYING) {
+                // Freeze inputs when pausing
+                leftDown=false; rightDown=false; jumpDown=false;
+                pauseSel=0;
+                state=State.PAUSED;
+            } else if(state==State.DEAD) {
+                state=State.MENU; particles.clear(); leftDown=rightDown=jumpDown=false;
+            }
+        }
+    }
+
+    void handlePauseKey(int k) {
+        // Volume adjustment mode
+        if(pauseSel == 2) {
+            if(k==KeyEvent.VK_LEFT) {
+                volume = Math.max(0, volume - 5);
+                applyVolume();
+                return;
+            }
+            if(k==KeyEvent.VK_RIGHT) {
+                volume = Math.min(100, volume + 5);
+                applyVolume();
+                return;
+            }
+        }
+
+        // Navigation
+        if(k==KeyEvent.VK_UP||k==KeyEvent.VK_W)
+            pauseSel = (pauseSel - 1 + PAUSE_OPTIONS.length) % PAUSE_OPTIONS.length;
+        if(k==KeyEvent.VK_DOWN||k==KeyEvent.VK_S)
+            pauseSel = (pauseSel + 1) % PAUSE_OPTIONS.length;
+
+        // Confirm selection
+        if(k==KeyEvent.VK_ENTER||k==KeyEvent.VK_SPACE) {
+            switch(pauseSel) {
+                case 0 -> { // Resume
+                    state = State.PLAYING;
+                }
+                case 1 -> { // Restart level
+                    startLevel(currentLevel);
+                }
+                case 2 -> { // Volume — just stay on this item, ←/→ adjusts it
+                    // Selecting Volume with ENTER nudges it up by 10 as a shortcut
+                    volume = Math.min(100, volume + 10);
+                    if(volume > 100) volume = 0;
+                    applyVolume();
+                }
+                case 3 -> { // Quit to menu
+                    state = State.MENU;
+                    particles.clear();
+                    leftDown=false; rightDown=false; jumpDown=false;
+                }
+            }
+        }
+
+        // ESC resumes
+        if(k==KeyEvent.VK_ESCAPE) {
+            state = State.PLAYING;
+        }
+    }
+
+    /**
+     * Hook this method into your javax.sound.sampled.Clip once you add music.
+     *
+     * Example:
+     *   Clip musicClip;  // your background music clip
+     *
+     *   void applyVolume() {
+     *       if (musicClip != null && musicClip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
+     *           FloatControl gainControl =
+     *               (FloatControl) musicClip.getControl(FloatControl.Type.MASTER_GAIN);
+     *           // Convert 0-100 linear volume to decibels
+     *           float dB = (volume == 0) ? gainControl.getMinimum()
+     *                      : 20f * (float) Math.log10(volume / 100.0);
+     *           dB = Math.max(gainControl.getMinimum(), Math.min(gainControl.getMaximum(), dB));
+     *           gainControl.setValue(dB);
+     *       }
+     *   }
+     */
+    void applyVolume() {
+        // Placeholder — wire up to your Clip's FloatControl here.
+        // System.out.println("Volume set to: " + volume + "%");
     }
 
     @Override
