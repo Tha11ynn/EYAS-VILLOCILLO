@@ -11,15 +11,15 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     static final int W = 900, H = 550;
 
     // ── Physics (smoother, more forgiving) ──────────────────
-    static final float GRAVITY      = 0.55f;   // lighter gravity
-    static final float JUMP_VEL     = -14.5f;  // snappy jump
+    static final float GRAVITY      = 0.55f;
+    static final float JUMP_VEL     = -14.5f;
     static final float MOVE_SPD     = 5.5f;
-    static final float ACCEL        = 0.85f;   // acceleration factor
-    static final float FRICTION     = 0.78f;   // ground friction
-    static final float AIR_FRICTION = 0.92f;   // air control
+    static final float ACCEL        = 0.85f;
+    static final float FRICTION     = 0.78f;
+    static final float AIR_FRICTION = 0.92f;
     static final float MAX_FALL     = 14f;
-    static final int   COYOTE_TIME  = 8;       // frames after leaving ledge can still jump
-    static final int   JUMP_BUFFER  = 8;       // frames jump input is buffered
+    static final int   COYOTE_TIME  = 8;
+    static final int   JUMP_BUFFER  = 8;
 
     // ── Game States ─────────────────────────────────────────
     enum State { MENU, PLAYING, DEAD, WIN_LEVEL, WIN_GAME }
@@ -35,8 +35,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     boolean facingRight = true;
     int playerW = 14, playerH = 36;
     int dotBobTick = 0;
-    int coyoteTimer   = 0;  // coyote time counter
-    int jumpBufferTimer = 0; // buffered jump counter
+    int coyoteTimer   = 0;
+    int jumpBufferTimer = 0;
     boolean wasOnGround = false;
 
     // ── Input ────────────────────────────────────────────────
@@ -45,20 +45,35 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ── Camera ───────────────────────────────────────────────
     float camX = 0;
 
+    // ── Tutorial System ──────────────────────────────────────
+    static class TutorialCard {
+        int triggerX;      // world X — card appears when player passes this X
+        String title;
+        String[] lines;
+        Color accentColor;
+        boolean shown = false;
+        int displayTimer = 0;        // counts up while visible
+        static final int DISPLAY_TICKS = 260; // ~4.3 seconds at 60fps
+        TutorialCard(int tx, String title, Color accent, String... lines) {
+            this.triggerX = tx; this.title = title;
+            this.accentColor = accent; this.lines = lines;
+        }
+    }
+    ArrayList<TutorialCard> tutCards = new ArrayList<>();
+    TutorialCard activeTutCard = null;
+
     // ── Platform ─────────────────────────────────────────────
     static class Platform {
         int x, y, w, h;
-        boolean fake;       // crumbles after step
-        boolean bouncy;     // launches player
-        boolean moving;     // moves left/right
-        boolean invisible;  // invisible but solid
+        boolean fake;
+        boolean bouncy;
+        boolean moving;
+        boolean invisible;
         float mx, my, mrange, mspeed, mdir = 1;
         int   fakeTimer = 0;
         boolean fakeTriggered = false;
         boolean revealTimer_active = false;
-        int revealFlash = 0; // brief flash when player lands on invisible
-
-        // Troll: platform shifts when player stands on it
+        int revealFlash = 0;
         boolean shiftOnStep = false;
         boolean shiftTriggered = false;
         int shiftTimer = 0;
@@ -74,7 +89,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ── Hazards ──────────────────────────────────────────────
     static class Spike {
         int x, y, w, h;
-        boolean chasing;      // troll: spike chases player
+        boolean chasing;
         float cx, cy, cspeed;
         boolean cdir = true;
         Spike(int x, int y, int w, int h){ this.x=x; this.y=y; this.w=w; this.h=h;
@@ -83,11 +98,11 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
     ArrayList<Spike> spikes = new ArrayList<>();
 
-    // ── Holes (appear out of nowhere in platforms) ───────────
+    // ── Holes ────────────────────────────────────────────────
     static class AppearingHole {
-        int platformIndex; // which platform gets the hole
-        int holeX, holeW;  // position within platform
-        int revealDelay;   // ticks before hole appears
+        int platformIndex;
+        int holeX, holeW;
+        int revealDelay;
         boolean active = false;
         boolean triggered = false;
         int warningFlash = 0;
@@ -96,7 +111,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
     ArrayList<AppearingHole> holes = new ArrayList<>();
-    int holePlayerTick = 0; // counts while player is on a holed platform
+    int holePlayerTick = 0;
 
     // ── Cannons ──────────────────────────────────────────────
     static class Cannon {
@@ -122,39 +137,33 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     int levelW;
 
     // ── Hints ────────────────────────────────────────────────
-    int levelTimer = 0;         // ticks since level started
+    int levelTimer = 0;
     int hintIndex  = 0;
     boolean hintVisible = false;
     int hintFadeTimer = 0;
-    static final int HINT_DELAY = 60 * 20; // show hint after 20 seconds of struggling
+    static final int HINT_DELAY = 60 * 20;
 
-    // per-level hints (5 hints per level)
     static final String[][] LEVEL_HINTS = {
-        // Level 1
         { "Hint 1: Look before you leap — gaps aren't always deadly.",
           "Hint 2: Purple blinking platforms are fake! They'll fall!",
           "Hint 3: Cyan platforms shoot you upward — use them!",
           "Hint 4: Cannons fire in a rhythm. Wait for the gap.",
           "Hint 5: The EXIT portal is at the far right. Almost there!" },
-        // Level 2
         { "Hint 1: Moving platforms have a steady rhythm — time your jump.",
           "Hint 2: Fake platforms blink. Real ones are solid color.",
           "Hint 3: Spikes at platform edges — don't land on the very end!",
           "Hint 4: Bouncy pads launch you high. Aim for the upper ledge.",
           "Hint 5: Stay patient. Rushing causes deaths here." },
-        // Level 3
         { "Hint 1: Some platforms SHIFT sideways when you land. Jump fast!",
           "Hint 2: Invisible platforms exist — look for faint sparkles.",
           "Hint 3: Chasing spikes speed up as you slow down. Keep moving!",
           "Hint 4: Holes appear in platforms after a short warning flash.",
           "Hint 5: The top path is safer but longer. Your call!" },
-        // Level 4
         { "Hint 1: Every platform gap can be jumped — none require perfect timing.",
           "Hint 2: Yellow warning flicker = hole about to appear. Move!",
           "Hint 3: The chasing spike resets if you fall back to a safe zone.",
           "Hint 4: Bouncy pads are your friends — they skip dangerous sections.",
           "Hint 5: The final stretch has a wide safe platform. Sprint for it!" },
-        // Level 5
         { "Hint 1: Breathe. Every troll has a solution.",
           "Hint 2: Invisible platforms are scattered throughout — probe edges.",
           "Hint 3: Moving platforms loop — just wait for them to come back.",
@@ -214,6 +223,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     void startLevel(int lvl) {
         platforms.clear(); spikes.clear(); cannons.clear();
         cannonballs.clear(); particles.clear(); holes.clear();
+        tutCards.clear(); activeTutCard = null;
         px=60; py=400; pvx=0; pvy=0; camX=0;
         onGround=false; jumpConsumed=false; wasOnGround=false;
         coyoteTimer=0; jumpBufferTimer=0;
@@ -230,52 +240,142 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         state = State.PLAYING;
     }
 
-    // ── LEVEL 1: "Welcome!" — easy, introduces mechanics ─────
+    // ── LEVEL 1: Tutorial — introduces each trap one by one ──
     void buildLevel1() {
-        levelW = 2800;
-        // Wide comfortable ground sections
-        addPlatform(0,   H-50, 350, 50);
-        addPlatform(420, H-50, 280, 50);  // small gap
-        addPlatform(760, H-50, 200, 50);
-        addPlatform(1020,H-50, 300, 50);
-        addPlatform(1400,H-50, 200, 50);
-        addPlatform(1700,H-50, 200, 50);
-        addPlatform(1980,H-50, 250, 50);
-        addPlatform(2300,H-50, 500, 50);  // wide safe end
+        levelW = 3400;
 
-        // Floaters (generous width)
-        addPlatform(430, 360, 130, 15);
-        Platform fake1 = addPlatform(640, 330, 110, 15); fake1.fake=true;
-        addPlatform(850, 300, 120, 15);
+        // ── ZONE 0: Safe start ───────────────────────────────
+        // Wide starting ground + movement tutorial card
+        addPlatform(0,   H-50, 500, 50);
 
-        // Bouncy platform — fun introduction
-        Platform b1 = addPlatform(1060, 340, 100, 15); b1.bouncy=true;
-        addPlatform(1200, 200, 120, 15); // landing after bounce
+        // ── ZONE 1: Gap intro ───────────────────────────────
+        addPlatform(560, H-50, 300, 50);
+        addPlatform(920, H-50, 300, 50);
 
-        // Moving platform — slow, easy
-        Platform m1 = addPlatform(1440, 330, 110, 15);
-        m1.moving=true; m1.mx=1440; m1.mrange=100; m1.mspeed=1.2f;
+        // ── ZONE 2: Spike intro ─────────────────────────────
+        addPlatform(1290, H-50, 320, 50);
+        addSpikes(1430, H-65, 2, 15);   // 2 spikes mid-platform, avoidable by jumping over
 
-        // Invisible platform (with sparkle hint)
-        Platform inv1 = addPlatform(1760, 360, 100, 15); inv1.invisible=true;
+        // ── ZONE 3: Fake platform intro ─────────────────────
+        addPlatform(1680, H-50, 300, 50); // solid ground below for safety
+        addPlatform(1680, 380, 110, 15);  // safe floater before fake
+        Platform fake1 = addPlatform(1860, 380, 110, 15); fake1.fake = true; // THE FAKE
 
-        // Troll: platform shifts when you land
-        Platform shift1 = addPlatform(2010, 360, 120, 15);
-        shift1.shiftOnStep=true; shift1.shiftDist=80;
+        // ── ZONE 4: Bouncy platform intro ───────────────────
+        addPlatform(2030, H-50, 300, 50);
+        Platform b1 = addPlatform(2080, 370, 100, 15); b1.bouncy = true;
+        addPlatform(2220, 220, 140, 15); // landing pad above
 
-        // Gentle spikes
-        addSpikes(425, H-65, 2, 15);
-        addSpikes(1025,H-65, 2, 15);
-        addSpikes(1705,H-65, 2, 15);
+        // ── ZONE 5: Moving platform intro ───────────────────
+        addPlatform(2350, H-50, 280, 50);
+        Platform m1 = addPlatform(2460, 360, 110, 15);
+        m1.moving=true; m1.mx=2460; m1.mrange=100; m1.mspeed=1.3f;
+        addPlatform(2620, H-50, 200, 50); // land here after moving plat
 
-        // One slow cannon
-        cannons.add(new Cannon(1100, H-90, false, 140));
+        // ── ZONE 6: Invisible platform intro ────────────────
+        addPlatform(2880, H-50, 220, 50); // safe ground
+        Platform inv1 = addPlatform(2960, 360, 110, 15); inv1.invisible = true;
 
-        // Appearing hole in a wide platform
-        int pIdx = findPlatformAt(1400, H-50);
-        if(pIdx >= 0) addHole(pIdx, 60, 30, 180); // appears after 3 sec
+        // ── ZONE 7: Appearing hole intro ────────────────────
+        addPlatform(3060, H-50, 240, 50);
+        int pIdx = findPlatformAt(3060, H-50);
+        if(pIdx >= 0) addHole(pIdx, 80, 35, 200); // hole appears after player arrives
 
-        goalX = 2550; goalY = H-110;
+        // ── ZONE 8: Cannon intro ─────────────────────────────
+        addPlatform(3160, H-50, 250, 50);
+        cannons.add(new Cannon(3180, H-90, false, 150)); // slow cannon, facing left so balls go left
+
+        // ── ZONE 9: Shift platform intro ─────────────────────
+        // (covered by the cannon safe zone leading to goal)
+
+        // Wide safe end
+        addPlatform(3260, H-50, 300, 50);
+
+        // ── TUTORIAL CARDS ───────────────────────────────────
+        // Triggered by player's world X position
+
+        // Card 0 — Movement basics (right at the start)
+        tutCards.add(new TutorialCard(20,
+            "MOVEMENT",
+            new Color(100, 200, 255),
+            "A / D  or  ← →   to move",
+            "SPACE / W / ↑  to jump",
+            "R to restart   ESC for menu"
+        ));
+
+        // Card 1 — Gaps
+        tutCards.add(new TutorialCard(460,
+            "GAPS",
+            new Color(255, 200, 80),
+            "Some platforms don't connect.",
+            "Jump across gaps — they're all",
+            "reachable with a normal jump!"
+        ));
+
+        // Card 2 — Spikes
+        tutCards.add(new TutorialCard(1220,
+            "SPIKES  ⚠",
+            new Color(255, 100, 100),
+            "White triangles = instant death.",
+            "Jump OVER them or go around.",
+            "They're always avoidable!"
+        ));
+
+        // Card 3 — Fake platforms
+        tutCards.add(new TutorialCard(1610,
+            "FAKE PLATFORMS",
+            new Color(180, 100, 255),
+            "Purple/blinking platforms CRUMBLE",
+            "when you step on them!",
+            "Watch for the purple blink."
+        ));
+
+        // Card 4 — Bouncy platforms
+        tutCards.add(new TutorialCard(1980,
+            "BOUNCY PADS  ↑↑",
+            new Color(80, 220, 255),
+            "Cyan platforms with ↑↑ launch",
+            "you super high. Use them to reach",
+            "upper ledges — don't panic!"
+        ));
+
+        // Card 5 — Moving platforms
+        tutCards.add(new TutorialCard(2360,
+            "MOVING PLATFORMS",
+            new Color(100, 255, 160),
+            "Some platforms slide back and forth.",
+            "Wait for them to come to you,",
+            "then ride them to the next gap."
+        ));
+
+        // Card 6 — Invisible platforms
+        tutCards.add(new TutorialCard(2820,
+            "INVISIBLE PLATFORMS",
+            new Color(200, 170, 255),
+            "Some platforms are near-invisible!",
+            "Look for faint sparkles ✦",
+            "Step carefully — they're solid."
+        ));
+
+        // Card 7 — Appearing holes
+        tutCards.add(new TutorialCard(3010,
+            "APPEARING HOLES  ⚠",
+            new Color(255, 180, 50),
+            "Platforms can develop HOLES!",
+            "A yellow flash warns you first.",
+            "Move off it before it opens!"
+        ));
+
+        // Card 8 — Cannons
+        tutCards.add(new TutorialCard(3110,
+            "CANNONS  💥",
+            new Color(255, 120, 60),
+            "Cannons fire on a rhythm.",
+            "Watch the timing — wait for",
+            "the gap, then run through!"
+        ));
+
+        goalX = 3350; goalY = H-110;
     }
 
     // ── LEVEL 2: "Getting There" ──────────────────────────────
@@ -292,7 +392,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         addPlatform(2300,H-50, 200, 50);
         addPlatform(2600,H-50, 600, 50);
 
-        // Floaters
         Platform m1 = addPlatform(350, 350, 110, 15);
         m1.moving=true; m1.mx=350; m1.mrange=120; m1.mspeed=1.5f;
 
@@ -316,7 +415,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         Platform b2 = addPlatform(2350, 330, 90, 15); b2.bouncy=true;
         addPlatform(2480, 200, 110, 15);
 
-        // Chasing spike on ground (slow)
         addSpikeChasing(200, H-65, 15, 1.2f);
 
         addSpikes(345, H-65, 2, 15);
@@ -326,7 +424,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         addSpikes(1745,H-65, 2, 15);
         addSpikes(2025,H-65, 2, 15);
 
-        // Holes
         int p1 = findPlatformAt(900, H-50);
         if(p1>=0) addHole(p1, 70, 30, 200);
         int p2 = findPlatformAt(1740, H-50);
@@ -356,7 +453,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         addPlatform(3020,H-50, 180, 50);
         addPlatform(3300,H-50, 300, 50);
 
-        // Floaters
         Platform m1 = addPlatform(300, 360, 110, 15);
         m1.moving=true; m1.mx=300; m1.mrange=140; m1.mspeed=1.8f;
 
@@ -378,7 +474,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         addPlatform(1980, 280, 110, 15);
 
         Platform shift2 = addPlatform(2120, 340, 100, 15);
-        shift2.shiftOnStep=true; shift2.shiftDist=-120; // shifts LEFT
+        shift2.shiftOnStep=true; shift2.shiftDist=-120;
 
         Platform b2 = addPlatform(2350, 320, 90, 15); b2.bouncy=true;
         addPlatform(2480, 180, 110, 15);
@@ -388,10 +484,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         addPlatform(2900, 260, 110, 15);
 
-        // Chasing spike (medium speed)
         addSpikeChasing(300, H-65, 15, 1.8f);
 
-        // Holes
         int p1 = findPlatformAt(820, H-50);   if(p1>=0) addHole(p1,60,35,160);
         int p2 = findPlatformAt(1640, H-50);  if(p2>=0) addHole(p2,50,35,160);
         int p3 = findPlatformAt(2460, H-50);  if(p3>=0) addHole(p3,70,35,160);
@@ -425,9 +519,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         addPlatform(2710,H-50, 160, 50);
         addPlatform(2990,H-50, 160, 50);
         addPlatform(3270,H-50, 160, 50);
-        addPlatform(3550,H-50, 450, 50); // safe end zone
+        addPlatform(3550,H-50, 450, 50);
 
-        // Floaters
         Platform m1 = addPlatform(280, 360, 100, 15);
         m1.moving=true; m1.mx=280; m1.mrange=130; m1.mspeed=2.0f;
 
@@ -463,11 +556,9 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         Platform b3 = addPlatform(3200, 330, 90, 15); b3.bouncy=true;
         addPlatform(3350, 160, 120, 15);
 
-        // Chasing spikes (two of them)
         addSpikeChasing(150, H-65, 15, 1.5f);
         addSpikeChasing(2200, H-65, 15, 2.0f);
 
-        // Holes
         int[] hi = {2,4,6,8,10};
         for(int i : hi) {
             if(i < platforms.size()) {
@@ -495,14 +586,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     void buildLevel5() {
         levelW = 4500;
         addPlatform(0, H-50, 150, 50);
-        // Chain of platforms
         int[] gx = {200,420,640,860,1080,1300,1520,1740,1960,2180,2400,2620,2840,3060,3280,3500,3720,3940,4200};
         for(int i=0;i<gx.length;i++){
             addPlatform(gx[i], H-50, 160+rng.nextInt(40), 50);
         }
         addPlatform(4300, H-50, 200, 50);
 
-        // Floating path (mix of all mechanics)
         for(int i=0;i<12;i++){
             int bx = 220 + i*320;
             int by = 180 + rng.nextInt(120);
@@ -515,21 +604,17 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             else { fp = addPlatform(bx,by,100,15); fp.shiftOnStep=true; fp.shiftDist=(rng.nextBoolean()?1:-1)*(80+i*10); }
         }
 
-        // Multiple chasing spikes
         addSpikeChasing(100,  H-65, 15, 1.3f);
         addSpikeChasing(2000, H-65, 15, 1.7f);
         addSpikeChasing(3500, H-65, 15, 2.0f);
 
-        // Holes on several ground platforms
         for(int i=1;i<gx.length;i+=3){
             int pIdx = findPlatformAt(gx[i], H-50);
             if(pIdx>=0) addHole(pIdx, 40, 35, 120+i*10);
         }
 
-        // Spikes on every gap
         for(int i=0;i<gx.length-1;i++) addSpikes(gx[i]+160, H-65, 2, 15);
 
-        // Cannons
         for(int i=0;i<8;i++)
             cannons.add(new Cannon(400+i*500, H-90, i%2==0, 60+i*5));
 
@@ -583,10 +668,15 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     void update() {
         levelTimer++;
 
+        // ── Tutorial card triggers ────────────────────────────
+        if(currentLevel == 0) {
+            updateTutorialCards();
+        }
+
         // ── Hint System ──────────────────────────────────────
         if(levelTimer % HINT_DELAY == 0 && hintIndex < 5) {
             hintVisible = true;
-            hintFadeTimer = 300; // show for 5 seconds
+            hintFadeTimer = 300;
         }
         if(hintVisible) {
             hintFadeTimer--;
@@ -600,7 +690,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if(jumpDown) jumpBufferTimer = JUMP_BUFFER;
         else if(jumpBufferTimer > 0) jumpBufferTimer--;
 
-        // ── Horizontal movement (smooth acceleration) ────────
+        // ── Horizontal movement ──────────────────────────────
         float targetVX = 0;
         if(leftDown)       { targetVX = -MOVE_SPD; facingRight=false; }
         else if(rightDown) { targetVX =  MOVE_SPD; facingRight=true; }
@@ -620,7 +710,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         wasOnGround = onGround;
 
-        // ── Jump (with buffer + coyote) ───────────────────────
+        // ── Jump ─────────────────────────────────────────────
         boolean canJump = coyoteTimer > 0 && !jumpConsumed;
         if(jumpBufferTimer > 0 && canJump) {
             pvy = JUMP_VEL;
@@ -631,26 +721,20 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
         if(!jumpDown) jumpConsumed = false;
 
-        // Variable jump height: release early = lower jump
         if(!jumpDown && pvy < -6f) pvy = Math.max(pvy + 1.2f, -6f);
-
         pvy = Math.min(pvy + GRAVITY, MAX_FALL);
 
-        // ── Move X first, then Y ─────────────────────────────
         px += pvx;
         if(px < 0) px = 0;
         if(px > levelW - playerW) px = levelW - playerW;
-
         py += pvy;
 
         // ── Update chasing spikes ─────────────────────────────
         for(Spike s : spikes) {
             if(!s.chasing) continue;
-            // Only chase if player is within horizontal range
             float dist = px - s.cx;
             if(Math.abs(dist) < 500) {
                 float dir = dist > 0 ? 1 : -1;
-                // Slow down when far, speed up when close
                 float proximity = 1f - Math.min(Math.abs(dist)/400f, 0.8f);
                 s.cx += dir * s.cspeed * (0.4f + proximity * 1.0f);
             }
@@ -671,7 +755,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             if(p.shiftOnStep && p.shiftTriggered) {
                 p.shiftTimer++;
                 if(p.shiftTimer <= 20) {
-                    p.x += p.shiftDist / 20; // shift over 20 frames
+                    p.x += p.shiftDist / 20;
                 }
             }
             if(p.invisible && p.revealTimer_active) {
@@ -684,7 +768,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         for(AppearingHole h : holes) {
             if(!h.triggered) {
                 h.revealDelay--;
-                if(h.revealDelay <= 60) h.warningFlash++; // warning flash period
+                if(h.revealDelay <= 60) h.warningFlash++;
                 if(h.revealDelay <= 0) { h.active=true; h.triggered=true; }
             }
         }
@@ -697,7 +781,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             Platform p = platforms.get(pIdx);
             if(p.fake && p.fakeTimer > 50) continue;
 
-            // Check if this platform has an active hole under the player
             boolean inHole = false;
             for(AppearingHole h : holes) {
                 if(h.platformIndex == pIdx && h.active) {
@@ -712,7 +795,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             Rectangle pl = p.rect();
             if(!pr.intersects(pl)) continue;
 
-            // Land on top
             if(pvy >= 0 && py + playerH - pvy <= pl.y + 8) {
                 py = pl.y - playerH;
                 if(p.bouncy) {
@@ -726,19 +808,15 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                     if(p.invisible) { p.revealTimer_active=true; p.revealFlash=45; }
                 }
             }
-            // Hit ceiling
             else if(pvy < 0 && py - pvy >= pl.y + pl.height - 5) {
                 py = pl.y + pl.height; pvy = 1;
             }
-            // Wall collisions
             else if(pvx > 0) { px = pl.x - playerW; pvx=0; }
             else if(pvx < 0) { px = pl.x + pl.width; pvx=0; }
         }
 
-        // ── Fall death ────────────────────────────────────────
         if(py > H + 60) { killPlayer("Fell into a pit.", "Didn't jump. Incredible.", "GRAVITY"); return; }
 
-        // ── Spike collision ───────────────────────────────────
         pr = new Rectangle((int)px+3, (int)py+2, playerW-6, playerH-2);
         for(Spike s : spikes) {
             if(pr.intersects(s.rect())) {
@@ -750,7 +828,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── Cannon update ─────────────────────────────────────
         for(Cannon c : cannons) {
             c.fireTimer++;
             if(c.fireTimer >= c.fireRate) {
@@ -769,12 +846,10 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── Camera (smooth) ───────────────────────────────────
         float targetCam = px - W/2f + playerW/2f;
         camX += (targetCam - camX) * 0.10f;
         camX = Math.max(0, Math.min(camX, levelW - W));
 
-        // ── Goal ──────────────────────────────────────────────
         Rectangle goalRect = new Rectangle(goalX, goalY, GOAL_W, GOAL_H);
         if(new Rectangle((int)px,(int)py,playerW,playerH).intersects(goalRect)) {
             totalScore += (5 - currentLevel) * 300 + 500;
@@ -782,12 +857,32 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             state = State.WIN_LEVEL;
         }
 
-        // ── Particles ─────────────────────────────────────────
         Iterator<Particle> it = particles.iterator();
         while(it.hasNext()) {
             Particle p = it.next();
             p.x += p.vx; p.y += p.vy; p.vy += 0.15f; p.life--;
             if(p.life <= 0) it.remove();
+        }
+    }
+
+    // ── Tutorial card logic ───────────────────────────────────
+    void updateTutorialCards() {
+        // Advance active card timer
+        if(activeTutCard != null) {
+            activeTutCard.displayTimer++;
+            if(activeTutCard.displayTimer >= TutorialCard.DISPLAY_TICKS) {
+                activeTutCard = null;
+            }
+            return; // don't check new triggers while one is showing
+        }
+        // Check if player has passed a trigger threshold
+        for(TutorialCard c : tutCards) {
+            if(!c.shown && px >= c.triggerX) {
+                c.shown = true;
+                c.displayTimer = 0;
+                activeTutCard = c;
+                break;
+            }
         }
     }
 
@@ -886,7 +981,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setColor(new Color(150,150,170));
         g.drawString("A/D: Move   SPACE: Jump   ↑↓: Select   ENTER: Confirm", W/2-230, H-30);
 
-        // Troll mechanics legend
         g.setFont(new Font("Courier New", Font.PLAIN, 12));
         String[] legend = {
             "Purple blink = Fake  |  Cyan ↑↑ = Bouncy",
@@ -903,7 +997,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     void drawGame(Graphics2D g) {
         int cx = (int)camX;
 
-        // Sky
         g.setPaint(new GradientPaint(0,0,new Color(15,5,30),0,H,new Color(35,15,60)));
         g.fillRect(0,0,W,H);
 
@@ -915,19 +1008,22 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.fillRect(sx, sy, i%7==0?2:1, i%7==0?2:1);
         }
 
+        // ── Draw zone dividers on level 1 ────────────────────
+        if(currentLevel == 0) {
+            drawTutorialZoneMarkers(g, cx);
+        }
+
         // Platforms
         for(int pIdx=0; pIdx<platforms.size(); pIdx++) {
             Platform p = platforms.get(pIdx);
             int rx = p.x - cx;
             if(rx+p.w < -10 || rx > W+10) continue;
 
-            // Gather hole masks for this platform
             ArrayList<int[]> holeMasks = new ArrayList<>();
             for(AppearingHole h : holes) {
                 if(h.platformIndex == pIdx && h.active)
                     holeMasks.add(new int[]{h.holeX, h.holeW});
                 else if(h.platformIndex == pIdx && !h.triggered && h.revealDelay <= 60) {
-                    // Warning flash
                     if((blinkTick/5)%2==0) {
                         g.setColor(new Color(255,200,0,100));
                         g.fillRect(rx+h.holeX, p.y, h.holeW, p.h);
@@ -936,13 +1032,10 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
 
             if(p.invisible) {
-                // Almost invisible — faint sparkle so player can find it
                 if(p.revealTimer_active) {
-                    // Revealed briefly
                     g.setColor(new Color(180,180,255,160));
                     drawPlatformSegmented(g, rx, p.y, p.w, p.h, holeMasks);
                 } else {
-                    // Subtle sparkle hint
                     float sparkle = (float)(0.3f + 0.15f*Math.sin(tick*0.08f+p.x*0.01f));
                     g.setColor(new Color(160,140,255,(int)(sparkle*80)));
                     for(int sx2=0; sx2<p.w; sx2+=12){
@@ -976,7 +1069,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 g.setFont(new Font("Courier New",Font.BOLD,9));
                 if(p.w>40) g.drawString("↑↑↑",rx+p.w/2-10,p.y-2);
             } else if(p.shiftOnStep) {
-                // Gold/orange color to hint it moves
                 g.setColor(new Color(180,140,30));
                 drawPlatformSegmented(g, rx, p.y, p.w, p.h, holeMasks);
                 g.setColor(new Color(240,200,60));
@@ -987,7 +1079,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                     g.drawString("→",rx+p.w/2-3,p.y-2);
                 }
             } else {
-                // Normal
                 Color topCol = new Color(60+currentLevel*8,100-currentLevel*4,60+currentLevel*4);
                 g.setColor(new Color(50,35,15));
                 drawPlatformSegmented(g, rx, p.y+7, p.w, p.h-7, holeMasks);
@@ -1001,10 +1092,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             int sx = s.x - cx;
             if(sx < -30 || sx > W+30) continue;
             if(s.chasing) {
-                // Red glow for chasing spike
                 g.setColor(new Color(255,50,0,60));
                 g.fillOval(sx-8, s.y-8, s.w+16, s.h+16);
-                // Trail
                 g.setColor(new Color(255,50,0,40));
                 g.fillRect(sx-15, s.y, 12, s.h);
                 g.setColor(new Color(255,80,30));
@@ -1050,13 +1139,106 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         drawHUD(g);
 
-        // Hint
-        if(hintVisible && currentLevel < LEVEL_HINTS.length) {
+        // Tutorial card (level 1 only)
+        if(currentLevel == 0 && activeTutCard != null) {
+            drawTutorialCard(g, activeTutCard);
+        }
+
+        // Hint (levels 2+)
+        if(currentLevel > 0 && hintVisible && currentLevel < LEVEL_HINTS.length) {
             drawHint(g, LEVEL_HINTS[currentLevel][hintIndex], hintFadeTimer);
         }
     }
 
-    // Draw platform with holes cut out
+    // ── Tutorial zone section labels (subtle background guides) ─
+    void drawTutorialZoneMarkers(Graphics2D g, int cx) {
+        // Zone name tags rendered above ground, scrolling with world
+        String[][] zones = {
+            {  "200", "ZONE 1: GAPS" },
+            {  "1200", "ZONE 2: SPIKES" },
+            {  "1580", "ZONE 3: FAKE" },
+            {  "1980", "ZONE 4: BOUNCY" },
+            {  "2340", "ZONE 5: MOVING" },
+            {  "2800", "ZONE 6: INVISIBLE" },
+            {  "2990", "ZONE 7: HOLES" },
+            {  "3100", "ZONE 8: CANNONS" },
+        };
+        g.setFont(new Font("Courier New", Font.BOLD, 10));
+        for(String[] z : zones) {
+            int wx = Integer.parseInt(z[0]);
+            int sx = wx - cx;
+            if(sx < -100 || sx > W + 100) continue;
+            g.setColor(new Color(255,255,255,22));
+            g.drawString(z[1], sx, H - 60);
+        }
+    }
+
+    // ── Tutorial Card Renderer ─────────────────────────────────
+    void drawTutorialCard(Graphics2D g, TutorialCard card) {
+        int progress = card.displayTimer;
+        int total    = TutorialCard.DISPLAY_TICKS;
+
+        // Fade in first 20 ticks, fade out last 30 ticks
+        float alpha = 1f;
+        if(progress < 20)       alpha = progress / 20f;
+        else if(progress > total - 30) alpha = (total - progress) / 30f;
+        alpha = Math.max(0, Math.min(1, alpha));
+
+        int cardW = 390;
+        int lineH = 22;
+        int numLines = card.lines.length;
+        int cardH = 28 + 26 + numLines * lineH + 14; // title + padding + lines + bottom padding
+        int cardX = W/2 - cardW/2;
+        int cardY = 22;
+
+        // Shadow
+        g.setColor(new Color(0,0,0,(int)(alpha*120)));
+        g.fillRoundRect(cardX+4, cardY+4, cardW, cardH, 14, 14);
+
+        // Background panel
+        g.setColor(new Color(8, 6, 20, (int)(alpha*230)));
+        g.fillRoundRect(cardX, cardY, cardW, cardH, 14, 14);
+
+        // Accent border (color-coded per trap type)
+        Color ac = card.accentColor;
+        g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha*200)));
+        g.setStroke(new BasicStroke(2.2f));
+        g.drawRoundRect(cardX, cardY, cardW, cardH, 14, 14);
+        g.setStroke(new BasicStroke(1f));
+
+        // Left accent strip
+        g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha*180)));
+        g.fillRoundRect(cardX, cardY, 6, cardH, 6, 6);
+
+        // Title bar background
+        g.setColor(new Color(ac.getRed()/5, ac.getGreen()/5, ac.getBlue()/5, (int)(alpha*180)));
+        g.fillRoundRect(cardX+1, cardY+1, cardW-2, 26, 12, 12);
+
+        // Title text
+        g.setFont(new Font("Courier New", Font.BOLD, 14));
+        g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha*255)));
+        String titleStr = "▸  " + card.title;
+        g.drawString(titleStr, cardX + 18, cardY + 18);
+
+        // Progress bar across bottom of title area
+        int barW = cardW - 20;
+        float pct = 1f - (float)progress / total;
+        g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha * 40)));
+        g.fillRoundRect(cardX + 10, cardY + 26, barW, 4, 2, 2);
+        g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha * 160)));
+        g.fillRoundRect(cardX + 10, cardY + 26, (int)(barW * pct), 4, 2, 2);
+
+        // Body lines
+        g.setFont(new Font("Courier New", Font.PLAIN, 13));
+        for(int i=0; i<card.lines.length; i++) {
+            // Stagger line appearance slightly
+            float lineAlpha = alpha * Math.min(1f, (progress - i * 8) / 15f);
+            lineAlpha = Math.max(0, lineAlpha);
+            g.setColor(new Color(220, 220, 240, (int)(lineAlpha * 255)));
+            g.drawString(card.lines[i], cardX + 18, cardY + 50 + i * lineH);
+        }
+    }
+
     void drawPlatformSegmented(Graphics2D g, int rx, int ry, int pw, int ph, ArrayList<int[]> holes2) {
         if(holes2.isEmpty()) { g.fillRect(rx, ry, pw, ph); return; }
         int drawn = 0;
@@ -1085,43 +1267,28 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
     void drawPlayerChar(Graphics2D g, int x, int y, boolean right, int frame) {
         int legSwing = (frame%2==0) ? 3 : -3;
-
-        // Feet
         g.setColor(new Color(60,60,100));
         g.fillRect(x+2, y+playerH-8+legSwing/2, 5, 8);
         g.fillRect(x+7, y+playerH-8-legSwing/2, 5, 8);
-
-        // Body (stem of i)
         g.setColor(new Color(220,220,255));
         g.fillRect(x+4, y+12, 6, playerH-20);
         g.setColor(new Color(160,160,200));
         g.fillRect(x+8, y+12, 2, playerH-20);
-
-        // Serifs
         g.setColor(new Color(200,200,240));
         g.fillRect(x+1, y+playerH-12, 12, 3);
         g.fillRect(x+2, y+11, 10, 2);
-
-        // Arms
         int armY = y+18;
         g.setColor(new Color(180,180,230));
         if(right){ g.fillRect(x-3,armY+legSwing/3,5,3); g.fillRect(x+playerW-2,armY-legSwing/3,5,3); }
         else      { g.fillRect(x-3,armY-legSwing/3,5,3); g.fillRect(x+playerW-2,armY+legSwing/3,5,3); }
-
-        // Dot (bobbing)
         float bob = (float)Math.sin(dotBobTick*0.08f)*2.5f;
         int dotX = x+3, dotY = (int)(y-2+bob);
-
         g.setColor(new Color(200,150,255,80)); g.fillOval(dotX-4,dotY-4,16,16);
         g.setColor(new Color(230,200,255));    g.fillOval(dotX,dotY,8,8);
         g.setColor(Color.WHITE);               g.fillOval(dotX+2,dotY+1,3,3);
-
-        // Eye
         g.setColor(new Color(50,30,80));
         if(right) g.fillOval(dotX+5,dotY+3,2,2);
         else      g.fillOval(dotX+1,dotY+3,2,2);
-
-        // Scared face when moving fast
         if(Math.abs(pvx)>2 || Math.abs(pvy)>5) {
             g.setColor(new Color(50,30,80));
             g.drawArc(dotX+1,dotY+3,6,4,0,180);
@@ -1157,7 +1324,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.drawString("SCORE: "+totalScore,16,45);
         g.setColor(new Color(255,100,100));
         g.drawString("DEATHS: "+deaths,16,63);
-
         g.setFont(new Font("Courier New",Font.PLAIN,11));
         g.setColor(new Color(255,255,255,90));
         g.drawString("A/D: Move   SPACE: Jump   R: Restart   ESC: Menu",W/2-175,H-10);
@@ -1165,7 +1331,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
     String getLevelName() {
         return switch(currentLevel){
-            case 0->"Welcome!"; case 1->"Getting There"; case 2->"Troll Central";
+            case 0->"Tutorial"; case 1->"Getting There"; case 2->"Troll Central";
             case 3->"Almost There"; case 4->"The Finale"; default->"???";
         };
     }
@@ -1177,26 +1343,21 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setColor(new Color(15,5,25,230)); g.fillRoundRect(panX,panY,pw,ph,18,18);
         g.setColor(new Color(200,30,30)); g.setStroke(new BasicStroke(2));
         g.drawRoundRect(panX,panY,pw,ph,18,18); g.setStroke(new BasicStroke(1));
-
         g.setFont(new Font("Courier New",Font.BOLD,42));
         drawShadowText(g,currentDeathMsg[2],W/2-g.getFontMetrics().stringWidth(currentDeathMsg[2])/2,panY+55,
             new Color(255,60,60),new Color(100,0,0));
-
         g.setFont(new Font("Courier New",Font.BOLD,20));
         g.setColor(new Color(240,220,220));
         String msg=currentDeathMsg[0];
         g.drawString(msg,W/2-g.getFontMetrics().stringWidth(msg)/2,panY+100);
-
         g.setFont(new Font("Courier New",Font.ITALIC,15));
         g.setColor(new Color(180,160,180));
         String sub=currentDeathMsg[1];
         g.drawString(sub,W/2-g.getFontMetrics().stringWidth(sub)/2,panY+125);
-
         g.setFont(new Font("Courier New",Font.PLAIN,13));
         g.setColor(new Color(255,120,120));
         String dc="Total deaths: "+deaths+" — you got this!";
         g.drawString(dc,W/2-g.getFontMetrics().stringWidth(dc)/2,panY+155);
-
         if((tick/20)%2==0) {
             g.setFont(new Font("Courier New",Font.BOLD,15));
             g.setColor(new Color(255,200,80));
@@ -1212,17 +1373,14 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setColor(new Color(5,25,15,220)); g.fillRoundRect(panX,panY,pw,ph,15,15);
         g.setColor(new Color(0,200,80)); g.setStroke(new BasicStroke(2));
         g.drawRoundRect(panX,panY,pw,ph,15,15); g.setStroke(new BasicStroke(1));
-
         g.setFont(new Font("Courier New",Font.BOLD,34));
         String msg = (currentLevel>=4) ? "YOU DID IT!!!" : "LEVEL CLEAR!";
         drawShadowText(g,msg,W/2-g.getFontMetrics().stringWidth(msg)/2,panY+50,
             new Color(80,255,130),new Color(0,80,40));
-
         g.setFont(new Font("Courier New",Font.PLAIN,15));
         g.setColor(new Color(180,240,200));
         String sub=(currentLevel<4)?"Next level incoming... (stay sharp!)":"You beat it. Genuinely impressive.";
         g.drawString(sub,W/2-g.getFontMetrics().stringWidth(sub)/2,panY+83);
-
         g.setColor(new Color(0,80,40));
         g.fillRoundRect(panX+20,panY+103,pw-40,18,6,6);
         float prog=(float)winTimer/100;
