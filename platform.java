@@ -145,30 +145,30 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
     static final String[][] LEVEL_HINTS = {
         { "Hint 1: Look before you leap — gaps aren't always deadly.",
-          "Hint 2: Purple blinking platforms are fake! They'll fall!",
-          "Hint 3: Cyan platforms shoot you upward — use them!",
-          "Hint 4: Cannons fire in a rhythm. Wait for the gap.",
-          "Hint 5: The EXIT portal is at the far right. Almost there!" },
+        "Hint 2: Purple blinking platforms are fake! They'll fall!",
+        "Hint 3: Cyan platforms shoot you upward — use them!",
+        "Hint 4: Cannons fire in a rhythm. Wait for the gap.",
+        "Hint 5: The EXIT portal is at the far right. Almost there!" },
         { "Hint 1: Moving platforms have a steady rhythm — time your jump.",
-          "Hint 2: Fake platforms blink. Real ones are solid color.",
-          "Hint 3: Spikes at platform edges — don't land on the very end!",
-          "Hint 4: Bouncy pads launch you high. Aim for the upper ledge.",
-          "Hint 5: Stay patient. Rushing causes deaths here." },
+        "Hint 2: Fake platforms blink. Real ones are solid color.",
+        "Hint 3: Spikes at platform edges — don't land on the very end!",
+        "Hint 4: Bouncy pads launch you high. Aim for the upper ledge.",
+        "Hint 5: Stay patient. Rushing causes deaths here." },
         { "Hint 1: Some platforms SHIFT sideways when you land. Jump fast!",
-          "Hint 2: Invisible platforms exist — look for faint sparkles.",
-          "Hint 3: Chasing spikes speed up as you slow down. Keep moving!",
-          "Hint 4: Holes appear in platforms after a short warning flash.",
-          "Hint 5: The top path is safer but longer. Your call!" },
+        "Hint 2: Invisible platforms exist — look for faint sparkles.",
+        "Hint 3: Chasing spikes speed up as you slow down. Keep moving!",
+        "Hint 4: Holes appear in platforms after a short warning flash.",
+        "Hint 5: The top path is safer but longer. Your call!" },
         { "Hint 1: Every platform gap can be jumped — none require perfect timing.",
-          "Hint 2: Yellow warning flicker = hole about to appear. Move!",
-          "Hint 3: The chasing spike resets if you fall back to a safe zone.",
-          "Hint 4: Bouncy pads are your friends — they skip dangerous sections.",
-          "Hint 5: The final stretch has a wide safe platform. Sprint for it!" },
-        { "Hint 1: Breathe. Every troll has a solution.",
-          "Hint 2: Invisible platforms are scattered throughout — probe edges.",
-          "Hint 3: Moving platforms loop — just wait for them to come back.",
-          "Hint 4: The upper path avoids most ground hazards.",
-          "Hint 5: You're almost there. The portal is visible from the last island!" }
+        "Hint 2: Yellow warning flicker = hole about to appear. Move!",
+        "Hint 3: The chasing spike resets if you fall back to a safe zone.",
+        "Hint 4: Bouncy pads are your friends — they skip dangerous sections.",
+        "Hint 5: The final stretch has a wide safe platform. Sprint for it!" },
+        { "Hint 1: The chasing spike starts far back — keep a steady pace.",
+        "Hint 2: Bouncy pads on the upper path let you skip ground hazards.",
+        "Hint 3: Invisible platforms are always above a ground platform.",
+        "Hint 4: Shift platforms move left or right — jump the moment you land.",
+        "Hint 5: The final safe platform is huge. Once you're on it, you've won!" }
     };
 
     // ── Particles ─────────────────────────────────────────────
@@ -245,7 +245,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         levelW = 3400;
 
         // ── ZONE 0: Safe start ───────────────────────────────
-        // Wide starting ground + movement tutorial card
         addPlatform(0,   H-50, 500, 50);
 
         // ── ZONE 1: Gap intro ───────────────────────────────
@@ -254,47 +253,40 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         // ── ZONE 2: Spike intro ─────────────────────────────
         addPlatform(1290, H-50, 320, 50);
-        addSpikes(1430, H-65, 2, 15);   // 2 spikes mid-platform, avoidable by jumping over
+        addSpikes(1430, H-65, 2, 15);
 
         // ── ZONE 3: Fake platform intro ─────────────────────
-        addPlatform(1680, H-50, 300, 50); // solid ground below for safety
-        addPlatform(1680, 380, 110, 15);  // safe floater before fake
-        Platform fake1 = addPlatform(1860, 380, 110, 15); fake1.fake = true; // THE FAKE
+        addPlatform(1680, H-50, 300, 50);
+        addPlatform(1680, 380, 110, 15);
+        Platform fake1 = addPlatform(1860, 380, 110, 15); fake1.fake = true;
 
         // ── ZONE 4: Bouncy platform intro ───────────────────
         addPlatform(2030, H-50, 300, 50);
         Platform b1 = addPlatform(2080, 370, 100, 15); b1.bouncy = true;
-        addPlatform(2220, 220, 140, 15); // landing pad above
+        addPlatform(2220, 220, 140, 15);
 
         // ── ZONE 5: Moving platform intro ───────────────────
         addPlatform(2350, H-50, 280, 50);
         Platform m1 = addPlatform(2460, 360, 110, 15);
         m1.moving=true; m1.mx=2460; m1.mrange=100; m1.mspeed=1.3f;
-        addPlatform(2620, H-50, 200, 50); // land here after moving plat
+        addPlatform(2620, H-50, 200, 50);
 
         // ── ZONE 6: Invisible platform intro ────────────────
-        addPlatform(2880, H-50, 220, 50); // safe ground
+        addPlatform(2880, H-50, 220, 50);
         Platform inv1 = addPlatform(2960, 360, 110, 15); inv1.invisible = true;
 
         // ── ZONE 7: Appearing hole intro ────────────────────
         addPlatform(3060, H-50, 240, 50);
         int pIdx = findPlatformAt(3060, H-50);
-        if(pIdx >= 0) addHole(pIdx, 80, 35, 200); // hole appears after player arrives
+        if(pIdx >= 0) addHole(pIdx, 80, 35, 200);
 
         // ── ZONE 8: Cannon intro ─────────────────────────────
         addPlatform(3160, H-50, 250, 50);
-        cannons.add(new Cannon(3180, H-90, false, 150)); // slow cannon, facing left so balls go left
+        cannons.add(new Cannon(3180, H-90, false, 150));
 
-        // ── ZONE 9: Shift platform intro ─────────────────────
-        // (covered by the cannon safe zone leading to goal)
-
-        // Wide safe end
         addPlatform(3260, H-50, 300, 50);
 
         // ── TUTORIAL CARDS ───────────────────────────────────
-        // Triggered by player's world X position
-
-        // Card 0 — Movement basics (right at the start)
         tutCards.add(new TutorialCard(20,
             "MOVEMENT",
             new Color(100, 200, 255),
@@ -302,8 +294,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             "SPACE / W / ↑  to jump",
             "R to restart   ESC for menu"
         ));
-
-        // Card 1 — Gaps
         tutCards.add(new TutorialCard(460,
             "GAPS",
             new Color(255, 200, 80),
@@ -311,8 +301,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             "Jump across gaps — they're all",
             "reachable with a normal jump!"
         ));
-
-        // Card 2 — Spikes
         tutCards.add(new TutorialCard(1220,
             "SPIKES  ⚠",
             new Color(255, 100, 100),
@@ -320,8 +308,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             "Jump OVER them or go around.",
             "They're always avoidable!"
         ));
-
-        // Card 3 — Fake platforms
         tutCards.add(new TutorialCard(1610,
             "FAKE PLATFORMS",
             new Color(180, 100, 255),
@@ -329,8 +315,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             "when you step on them!",
             "Watch for the purple blink."
         ));
-
-        // Card 4 — Bouncy platforms
         tutCards.add(new TutorialCard(1980,
             "BOUNCY PADS  ↑↑",
             new Color(80, 220, 255),
@@ -338,8 +322,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             "you super high. Use them to reach",
             "upper ledges — don't panic!"
         ));
-
-        // Card 5 — Moving platforms
         tutCards.add(new TutorialCard(2360,
             "MOVING PLATFORMS",
             new Color(100, 255, 160),
@@ -347,8 +329,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             "Wait for them to come to you,",
             "then ride them to the next gap."
         ));
-
-        // Card 6 — Invisible platforms
         tutCards.add(new TutorialCard(2820,
             "INVISIBLE PLATFORMS",
             new Color(200, 170, 255),
@@ -356,8 +336,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             "Look for faint sparkles ✦",
             "Step carefully — they're solid."
         ));
-
-        // Card 7 — Appearing holes
         tutCards.add(new TutorialCard(3010,
             "APPEARING HOLES  ⚠",
             new Color(255, 180, 50),
@@ -365,8 +343,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             "A yellow flash warns you first.",
             "Move off it before it opens!"
         ));
-
-        // Card 8 — Cannons
         tutCards.add(new TutorialCard(3110,
             "CANNONS  💥",
             new Color(255, 120, 60),
@@ -583,42 +559,139 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
 
     // ── LEVEL 5: "The Grand Finale" ───────────────────────────
+    //
+    // Design philosophy:
+    //   • Ground platforms are generously wide (200px) with moderate gaps (80-100px) —
+    //     all jumpable without stress.
+    //   • Each floating platform sits exactly one jump above its ground platform and
+    //     is spaced so the player lands cleanly on the next ground platform if they
+    //     choose NOT to use it — using a floater is always optional / a shortcut.
+    //   • Chasing spike starts 600px behind the player so there's a clear head-start.
+    //     It only catches up if the player stands still for several seconds.
+    //   • Hazard density increases gently: first third is mostly gaps + one fake;
+    //     middle third adds moving/invisible/shift; final third adds cannons + holes.
+    //   • A wide safe "finish line" platform gives the player breathing room before
+    //     the goal.
+    //
     void buildLevel5() {
-        levelW = 4500;
-        addPlatform(0, H-50, 150, 50);
-        int[] gx = {200,420,640,860,1080,1300,1520,1740,1960,2180,2400,2620,2840,3060,3280,3500,3720,3940,4200};
-        for(int i=0;i<gx.length;i++){
-            addPlatform(gx[i], H-50, 160+rng.nextInt(40), 50);
-        }
-        addPlatform(4300, H-50, 200, 50);
+        levelW = 4200;
 
-        for(int i=0;i<12;i++){
-            int bx = 220 + i*320;
-            int by = 180 + rng.nextInt(120);
-            int t = i % 5;
-            Platform fp;
-            if(t==0){ fp = addPlatform(bx,by,100,15); fp.moving=true; fp.mx=bx; fp.mrange=100+i*8; fp.mspeed=1.5f+i*0.12f; }
-            else if(t==1){ fp = addPlatform(bx,by,100,15); fp.fake=true; }
-            else if(t==2){ fp = addPlatform(bx,by,100,15); fp.invisible=true; }
-            else if(t==3){ fp = addPlatform(bx,by,100,15); fp.bouncy=true; }
-            else { fp = addPlatform(bx,by,100,15); fp.shiftOnStep=true; fp.shiftDist=(rng.nextBoolean()?1:-1)*(80+i*10); }
-        }
+        // ── GROUND LAYOUT ────────────────────────────────────
+        // Consistent 200px wide ground pads, gaps of 80-100px.
+        // Player starts on pad 0 at x=0.
 
-        addSpikeChasing(100,  H-65, 15, 1.3f);
-        addSpikeChasing(2000, H-65, 15, 1.7f);
-        addSpikeChasing(3500, H-65, 15, 2.0f);
+        // Pad 0 — Start (wide, safe)
+        addPlatform(0,    H-50, 260, 50);
 
-        for(int i=1;i<gx.length;i+=3){
-            int pIdx = findPlatformAt(gx[i], H-50);
-            if(pIdx>=0) addHole(pIdx, 40, 35, 120+i*10);
-        }
+        // Pad 1
+        addPlatform(360,  H-50, 200, 50);
+        // Pad 2
+        addPlatform(640,  H-50, 200, 50);
+        // Pad 3
+        addPlatform(920,  H-50, 200, 50);
+        // Pad 4
+        addPlatform(1200, H-50, 200, 50);
+        // Pad 5
+        addPlatform(1480, H-50, 200, 50);
+        // Pad 6
+        addPlatform(1760, H-50, 200, 50);
+        // Pad 7
+        addPlatform(2040, H-50, 200, 50);
+        // Pad 8
+        addPlatform(2320, H-50, 200, 50);
+        // Pad 9
+        addPlatform(2600, H-50, 200, 50);
+        // Pad 10
+        addPlatform(2880, H-50, 200, 50);
+        // Pad 11
+        addPlatform(3160, H-50, 200, 50);
+        // Pad 12
+        addPlatform(3440, H-50, 200, 50);
 
-        for(int i=0;i<gx.length-1;i++) addSpikes(gx[i]+160, H-65, 2, 15);
+        // Finish line — very wide, completely safe
+        addPlatform(3720, H-50, 480, 50);
 
-        for(int i=0;i<8;i++)
-            cannons.add(new Cannon(400+i*500, H-90, i%2==0, 60+i*5));
+        // ── FLOATING PLATFORMS ───────────────────────────────
+        // Each sits at y = H-180 (one clear jump above ground).
+        // Positioned centered above the GAP between two ground pads,
+        // so landing on it then jumping lands neatly on the next ground pad.
+        // Using the floater is optional — the ground path always works.
 
-        goalX = 4320; goalY = H-110;
+        // Between pad 1 and 2 — solid floater (safe, just a shortcut)
+        addPlatform(460, H-180, 120, 15);
+
+        // Between pad 2 and 3 — BOUNCY (launches player over the spike on pad 3)
+        Platform b1 = addPlatform(740, H-180, 120, 15); b1.bouncy = true;
+        // Upper landing pad after bouncy — gives the player somewhere to go
+        addPlatform(820, H-280, 130, 15);
+
+        // Between pad 3 and 4 — FAKE (visual troll; ground path underneath is safe)
+        Platform fake1 = addPlatform(1020, H-180, 120, 15); fake1.fake = true;
+
+        // Between pad 4 and 5 — MOVING (rhythm challenge; lands on pad 5)
+        Platform mov1 = addPlatform(1300, H-180, 110, 15);
+        mov1.moving = true; mov1.mx = 1300; mov1.mrange = 110; mov1.mspeed = 1.6f;
+
+        // Between pad 5 and 6 — INVISIBLE (sparkles hint its position above the gap)
+        Platform inv1 = addPlatform(1580, H-180, 120, 15); inv1.invisible = true;
+
+        // Between pad 6 and 7 — SHIFT (shifts right, player should jump immediately)
+        Platform shift1 = addPlatform(1860, H-180, 120, 15);
+        shift1.shiftOnStep = true; shift1.shiftDist = 110;
+
+        // Between pad 7 and 8 — MOVING (faster, second moving challenge)
+        Platform mov2 = addPlatform(2140, H-180, 110, 15);
+        mov2.moving = true; mov2.mx = 2140; mov2.mrange = 120; mov2.mspeed = 2.0f;
+
+        // Between pad 8 and 9 — BOUNCY (skip the hole that appears on pad 9)
+        Platform b2 = addPlatform(2420, H-180, 120, 15); b2.bouncy = true;
+        addPlatform(2500, H-280, 130, 15); // upper landing for bouncy
+
+        // Between pad 9 and 10 — INVISIBLE (second invisible challenge)
+        Platform inv2 = addPlatform(2700, H-180, 120, 15); inv2.invisible = true;
+
+        // Between pad 10 and 11 — SHIFT (shifts left this time)
+        Platform shift2 = addPlatform(2980, H-180, 120, 15);
+        shift2.shiftOnStep = true; shift2.shiftDist = -110;
+
+        // Between pad 11 and 12 — MOVING + higher (final floater challenge)
+        Platform mov3 = addPlatform(3260, H-190, 100, 15);
+        mov3.moving = true; mov3.mx = 3260; mov3.mrange = 100; mov3.mspeed = 2.2f;
+
+        // ── SPIKES ───────────────────────────────────────────
+        // Ground spikes sit near the FRONT edge of a pad — easy to jump over,
+        // but punish careless landings from a previous gap.
+
+        addSpikes(370,  H-65, 2, 15);   // front of pad 1
+        addSpikes(930,  H-65, 2, 15);   // front of pad 3 (under the fake floater)
+        addSpikes(1210, H-65, 2, 15);   // front of pad 4
+        addSpikes(1770, H-65, 2, 15);   // front of pad 6
+        addSpikes(2050, H-65, 2, 15);   // front of pad 7
+        addSpikes(2610, H-65, 2, 15);   // front of pad 9 (bouncy skips this!)
+        addSpikes(2890, H-65, 2, 15);   // front of pad 10
+        addSpikes(3170, H-65, 2, 15);   // front of pad 11
+
+        // ── CHASING SPIKE ────────────────────────────────────
+        // Spawns 600px behind start — player has a large head-start.
+        // Speed 1.4 means it only catches up if you idle for ~8 seconds.
+        addSpikeChasing(-600, H-65, 15, 1.4f);
+
+        // ── APPEARING HOLES ──────────────────────────────────
+        // Only on every other pad in the second half — gives the player
+        // time to read the warning flash and move on.
+        int p7  = findPlatformAt(2040, H-50);  if(p7  >= 0) addHole(p7,  70, 35, 180);
+        int p9  = findPlatformAt(2600, H-50);  if(p9  >= 0) addHole(p9,  60, 35, 160);
+        int p11 = findPlatformAt(3160, H-50);  if(p11 >= 0) addHole(p11, 65, 35, 170);
+
+        // ── CANNONS ──────────────────────────────────────────
+        // Only in the second half; fire rates are moderate (not frantic).
+        // Each cannon is on a different pad so the player has a breather between them.
+        cannons.add(new Cannon(1480, H-90, false, 110)); // pad 5
+        cannons.add(new Cannon(2320, H-90, true,  100)); // pad 8, faces right (fires toward pad 9)
+        cannons.add(new Cannon(2880, H-90, false,  95)); // pad 10
+        cannons.add(new Cannon(3440, H-90, false,  90)); // pad 12 (last real challenge before finish)
+
+        goalX = 3900; goalY = H-110;
     }
 
     // ── Helpers ───────────────────────────────────────────────
@@ -867,15 +940,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
     // ── Tutorial card logic ───────────────────────────────────
     void updateTutorialCards() {
-        // Advance active card timer
         if(activeTutCard != null) {
             activeTutCard.displayTimer++;
             if(activeTutCard.displayTimer >= TutorialCard.DISPLAY_TICKS) {
                 activeTutCard = null;
             }
-            return; // don't check new triggers while one is showing
+            return;
         }
-        // Check if player has passed a trigger threshold
         for(TutorialCard c : tutCards) {
             if(!c.shown && px >= c.triggerX) {
                 c.shown = true;
@@ -1150,9 +1221,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── Tutorial zone section labels (subtle background guides) ─
+    // ── Tutorial zone section labels ─────────────────────────
     void drawTutorialZoneMarkers(Graphics2D g, int cx) {
-        // Zone name tags rendered above ground, scrolling with world
         String[][] zones = {
             {  "200", "ZONE 1: GAPS" },
             {  "1200", "ZONE 2: SPIKES" },
@@ -1178,7 +1248,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         int progress = card.displayTimer;
         int total    = TutorialCard.DISPLAY_TICKS;
 
-        // Fade in first 20 ticks, fade out last 30 ticks
         float alpha = 1f;
         if(progress < 20)       alpha = progress / 20f;
         else if(progress > total - 30) alpha = (total - progress) / 30f;
@@ -1187,40 +1256,33 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         int cardW = 390;
         int lineH = 22;
         int numLines = card.lines.length;
-        int cardH = 28 + 26 + numLines * lineH + 14; // title + padding + lines + bottom padding
+        int cardH = 28 + 26 + numLines * lineH + 14;
         int cardX = W/2 - cardW/2;
         int cardY = 22;
 
-        // Shadow
         g.setColor(new Color(0,0,0,(int)(alpha*120)));
         g.fillRoundRect(cardX+4, cardY+4, cardW, cardH, 14, 14);
 
-        // Background panel
         g.setColor(new Color(8, 6, 20, (int)(alpha*230)));
         g.fillRoundRect(cardX, cardY, cardW, cardH, 14, 14);
 
-        // Accent border (color-coded per trap type)
         Color ac = card.accentColor;
         g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha*200)));
         g.setStroke(new BasicStroke(2.2f));
         g.drawRoundRect(cardX, cardY, cardW, cardH, 14, 14);
         g.setStroke(new BasicStroke(1f));
 
-        // Left accent strip
         g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha*180)));
         g.fillRoundRect(cardX, cardY, 6, cardH, 6, 6);
 
-        // Title bar background
         g.setColor(new Color(ac.getRed()/5, ac.getGreen()/5, ac.getBlue()/5, (int)(alpha*180)));
         g.fillRoundRect(cardX+1, cardY+1, cardW-2, 26, 12, 12);
 
-        // Title text
         g.setFont(new Font("Courier New", Font.BOLD, 14));
         g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha*255)));
         String titleStr = "▸  " + card.title;
         g.drawString(titleStr, cardX + 18, cardY + 18);
 
-        // Progress bar across bottom of title area
         int barW = cardW - 20;
         float pct = 1f - (float)progress / total;
         g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha * 40)));
@@ -1228,10 +1290,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha * 160)));
         g.fillRoundRect(cardX + 10, cardY + 26, (int)(barW * pct), 4, 2, 2);
 
-        // Body lines
         g.setFont(new Font("Courier New", Font.PLAIN, 13));
         for(int i=0; i<card.lines.length; i++) {
-            // Stagger line appearance slightly
             float lineAlpha = alpha * Math.min(1f, (progress - i * 8) / 15f);
             lineAlpha = Math.max(0, lineAlpha);
             g.setColor(new Color(220, 220, 240, (int)(lineAlpha * 255)));
