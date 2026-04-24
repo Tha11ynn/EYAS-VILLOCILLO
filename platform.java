@@ -198,20 +198,10 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
     // ── Death messages ────────────────────────────────────────
     static final String[][] DEATH_MSGS = {
-        { "Walked into a spike.", "Happens to everyone.", "OUCH" },
-        { "Got yeeted by a cannonball.", "Didn't see that coming.", "BOOM" },
-        { "Fell into a fake floor.", "It was blinking though...", "WHOOPS" },
-        { "The platform had other plans.", "It moved. Classic.", "TROLLED" },
-        { "Fell into a pit.", "Happens to the best.", "GRAVITY" },
-        { "Got bonked mid-air.", "Physics said no.", "NOPE" },
-        { "Landed on a hole.", "Floor went missing.", "YIKES" },
-        { "The moving platform left.", "It'll come back, promise.", "TIMING" },
-        { "Invisible platform was not there.", "Or was it?", "SNEAKY" },
-        { "Chasing spike caught up.", "They're faster than they look.", "RUN" },
-        { "Almost made it!", "Key word: almost.", "SO CLOSE" },
-        { "The hole appeared right under you.", "Yellow means warning!", "WARNED" },
+        { null, null, null },
     };
     String[] currentDeathMsg = DEATH_MSGS[0];
+    int lastDeathMsg = -1;
 
     // ── Misc ──────────────────────────────────────────────────
     Timer timer;
@@ -301,9 +291,9 @@ void buildLevel1() {
             "Jump OVER them or go around.",
             "They're always avoidable!"));
         tutCards.add(new TutorialCard(1610, "FAKE PLATFORMS", new Color(180, 100, 255),
-            "Purple/blinking platforms CRUMBLE",
+            "Sometimes platforms fall",
             "when you step on them!",
-            "Watch for the purple blink."));
+            "Make sure to react fast."));
         tutCards.add(new TutorialCard(1980, "BOUNCY PADS  ↑↑", new Color(80, 220, 255),
             "Cyan platforms with ↑↑ launch",
             "you super high. Use them to reach",
@@ -316,14 +306,14 @@ void buildLevel1() {
             "Some platforms are near-invisible!",
             "Look for faint sparkles ✦",
             "Step carefully — they're solid."));
-        tutCards.add(new TutorialCard(3010, "APPEARING HOLES  ⚠", new Color(255, 180, 50),
-            "Platforms can develop HOLES!",
-            "A yellow flash warns you first.",
-            "Move off it before it opens!"));
         tutCards.add(new TutorialCard(3110, "CANNONS  💥", new Color(255, 120, 60),
             "Cannons fire on a rhythm.",
             "Watch the timing — wait for",
             "the gap, then run through!"));
+
+        addPlatform(3560, H-50, 250, 50);
+
+        cannons.add(new Cannon(3180, H-90, false, 140));
 
         goalX = 3350; goalY = H-110;
     }
@@ -757,9 +747,19 @@ void buildLevel1() {
     void killPlayer(String l1, String l2, String tag) {
         if(state == State.DEAD) return;
         deaths++;
-        currentDeathMsg = (rng.nextFloat() < 0.5f)
-            ? new String[]{l1, l2, tag}
-            : DEATH_MSGS[rng.nextInt(DEATH_MSGS.length)];
+        // Use custom message OR random pool
+        if(l1 != null && l2 != null && tag != null) {
+            currentDeathMsg = new String[]{l1, l2, tag};
+        } else {
+            // no-repeat random selection
+            int idx;
+            do {
+                idx = (int)(rng.nextFloat() * DEATH_MSGS.length);
+            } while(idx == lastDeathMsg);
+
+            lastDeathMsg = idx;
+            currentDeathMsg = DEATH_MSGS[idx];
+        }
         spawnDeathBurst();
         state = State.DEAD;
     }
@@ -852,9 +852,8 @@ void buildLevel1() {
 
         g.setFont(new Font("Courier New", Font.PLAIN, 12));
         String[] legend = {
-            "Purple blink = Fake  |  Cyan ↑↑ = Bouncy",
-            "Faint shimmer = Invisible  |  Gold = Shifts away",
-            "Red trails = Chasing spike  |  Yellow flash = Hole incoming"
+            "Red when stepped on = Fake  |  Cyan ↑↑ = Bouncy",
+            "Faint shimmer = Invisible  |  Red trails = Chasing spike",
         };
         for(int i=0;i<legend.length;i++){
             g.setColor(new Color(180,150,200));
@@ -1531,32 +1530,43 @@ void buildLevel1() {
 
     // ── DEATH SCREEN ──────────────────────────────────────────
     void drawDeathScreen(Graphics2D g) {
-        g.setColor(new Color(0,0,0,160)); g.fillRect(0,0,W,H);
-        int pw=500,ph=220,panX=W/2-pw/2,panY=H/2-ph/2;
-        g.setColor(new Color(15,5,25,230)); g.fillRoundRect(panX,panY,pw,ph,18,18);
-        g.setColor(new Color(200,30,30)); g.setStroke(new BasicStroke(2));
-        g.drawRoundRect(panX,panY,pw,ph,18,18); g.setStroke(new BasicStroke(1));
-        g.setFont(new Font("Courier New",Font.BOLD,42));
-        drawShadowText(g,currentDeathMsg[2],W/2-g.getFontMetrics().stringWidth(currentDeathMsg[2])/2,panY+55,
-            new Color(255,60,60),new Color(100,0,0));
-        g.setFont(new Font("Courier New",Font.BOLD,20));
-        g.setColor(new Color(240,220,220));
-        String msg=currentDeathMsg[0];
-        g.drawString(msg,W/2-g.getFontMetrics().stringWidth(msg)/2,panY+100);
-        g.setFont(new Font("Courier New",Font.ITALIC,15));
-        g.setColor(new Color(180,160,180));
-        String sub=currentDeathMsg[1];
-        g.drawString(sub,W/2-g.getFontMetrics().stringWidth(sub)/2,panY+125);
-        g.setFont(new Font("Courier New",Font.PLAIN,13));
-        g.setColor(new Color(255,120,120));
-        String dc="Total deaths: "+deaths+" — you got this!";
-        g.drawString(dc,W/2-g.getFontMetrics().stringWidth(dc)/2,panY+155);
-        if((tick/20)%2==0) {
-            g.setFont(new Font("Courier New",Font.BOLD,15));
-            g.setColor(new Color(255,200,80));
-            String pr="R: Try Again   |   ESC: Menu";
-            g.drawString(pr,W/2-g.getFontMetrics().stringWidth(pr)/2,panY+193);
-        }
+    g.setColor(new Color(0,0,0,160)); 
+    g.fillRect(0,0,W,H);
+    int pw=500,ph=220,panX=W/2-pw/2,panY=H/2-ph/2;
+    g.setColor(new Color(15,5,25,230)); 
+    g.fillRoundRect(panX,panY,pw,ph,18,18);
+    g.setColor(new Color(200,30,30)); 
+    g.setStroke(new BasicStroke(2));
+    g.drawRoundRect(panX,panY,pw,ph,18,18);
+    g.setStroke(new BasicStroke(1));
+    g.setFont(new Font("Courier New",Font.BOLD,42));
+    drawShadowText(
+        g,
+        currentDeathMsg[2],
+        W/2-g.getFontMetrics().stringWidth(currentDeathMsg[2])/2,
+        panY+55,
+        new Color(255,60,60),
+        new Color(100,0,0)
+    );
+    g.setFont(new Font("Courier New",Font.BOLD,20));
+    g.setColor(new Color(240,220,220));
+    String msg=currentDeathMsg[0];
+    g.drawString(msg,W/2-g.getFontMetrics().stringWidth(msg)/2,panY+100);
+    g.setFont(new Font("Courier New",Font.ITALIC,15));
+    g.setColor(new Color(180,160,180));
+    String sub=currentDeathMsg[1];
+    g.drawString(sub,W/2-g.getFontMetrics().stringWidth(sub)/2,panY+125);
+    g.setFont(new Font("Courier New",Font.PLAIN,13));
+    g.setColor(new Color(255,120,120));
+    String dc="Total deaths: "+deaths+" — you got this!";
+    g.drawString(dc,W/2-g.getFontMetrics().stringWidth(dc)/2,panY+155);
+
+    if((tick/20)%2==0) {
+        g.setFont(new Font("Courier New",Font.BOLD,15));
+        g.setColor(new Color(255,200,80));
+        String pr="R: Try Again   |   ESC: Menu";
+        g.drawString(pr,W/2-g.getFontMetrics().stringWidth(pr)/2,panY+193);
+    }
     }
 
     // ── WIN LEVEL ─────────────────────────────────────────────
