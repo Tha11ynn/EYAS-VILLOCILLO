@@ -1,9 +1,9 @@
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
+import javax.swing.*;
 
 public class platform extends JPanel implements ActionListener, KeyListener {
 
@@ -22,12 +22,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     static final int   JUMP_BUFFER  = 8;
 
     // ── Game States ─────────────────────────────────────────
-    enum State { MENU, PLAYING, PAUSED, DEAD, WIN_LEVEL, WIN_GAME }
+    enum State { MENU, LEVEL_SELECT, PLAYING, PAUSED, DEAD, WIN_LEVEL, WIN_GAME }
     State state = State.MENU;
 
     int currentLevel = 0;
     int totalScore   = 0;
     int deaths       = 0;
+    int highestUnlockedLevel = 0; // Track progression
 
     // ── Player ───────────────────────────────────────────────
     float px = 80, py = 300, pvx = 0, pvy = 0;
@@ -45,13 +46,18 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ── Camera ───────────────────────────────────────────────
     float camX = 0;
 
+    // ── Menu Selection ───────────────────────────────────────
+    int menuSel = 0;
+    int levelSelectSel = 0;
+    static final String[] MENU_OPTIONS = { "▶  START GAME", "⊞  LEVEL SELECT", "✕  QUIT" };
+    static final String[] LEVEL_NAMES = { "Tutorial", "Getting There", "Troll Central", "Almost There", "The Finale" };
+
     // ── Pause Menu ───────────────────────────────────────────
     int pauseSel = 0;
-    // 0 = Resume, 1 = Restart, 2 = Volume, 3 = Quit to Menu
-    static final String[] PAUSE_OPTIONS = { "▶  RESUME", "↺  RESTART LEVEL", "♪  VOLUME", "⌂  QUIT TO MENU" };
-    // Volume: 0–100, used as a % (ready to hook into Clip FloatControl)
+    boolean pauseLevelSelect = false; // Sub-menu toggle
+    int pauseLevelSel = 0;
+    static final String[] PAUSE_OPTIONS = { "▶  RESUME", "↺  RESTART LEVEL", "⊞  LEVEL SELECT", "♪  VOLUME", "⌂  QUIT TO MENU" };
     int volume = 80;
-    boolean adjustingVolume = false;
 
     // ── Tutorial System ──────────────────────────────────────
     static class TutorialCard {
@@ -211,7 +217,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     Timer timer;
     Random rng = new Random();
     int tick = 0;
-    int menuSel = 0;
     int winTimer = 0;
     int blinkTick = 0;
 
@@ -250,31 +255,38 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
 
     // ── LEVEL 1: Tutorial ────────────────────────────────────
-    void buildLevel1() {
-        levelW = 3400;
-        addPlatform(0,   H-50, 500, 50);
-        addPlatform(560, H-50, 300, 50);
-        addPlatform(920, H-50, 300, 50);
-        addPlatform(1290, H-50, 320, 50);
-        addSpikes(1430, H-65, 2, 15);
-        addPlatform(1680, H-50, 300, 50);
-        addPlatform(1680, 380, 110, 15);
-        Platform fake1 = addPlatform(1860, 380, 110, 15); fake1.fake = true;
-        addPlatform(2030, H-50, 300, 50);
-        Platform b1 = addPlatform(2080, 370, 100, 15); b1.bouncy = true;
-        addPlatform(2220, 220, 140, 15);
-        addPlatform(2350, H-50, 280, 50);
-        Platform m1 = addPlatform(2460, 360, 110, 15);
-        m1.moving=true; m1.mx=2460; m1.mrange=100; m1.mspeed=1.3f;
-        addPlatform(2620, H-50, 200, 50);
-        addPlatform(2880, H-50, 220, 50);
-        Platform inv1 = addPlatform(2960, 360, 110, 15); inv1.invisible = true;
-        addPlatform(3060, H-50, 240, 50);
-        int pIdx = findPlatformAt(3060, H-50);
-        if(pIdx >= 0) addHole(pIdx, 80, 35, 200);
-        addPlatform(3160, H-50, 250, 50);
-        cannons.add(new Cannon(3180, H-90, false, 150));
-        addPlatform(3260, H-50, 300, 50);
+void buildLevel1() {
+    levelW = 3400;
+    addPlatform(0,    H-50, 500, 50);
+    addPlatform(560,  H-50, 300, 50);
+    addPlatform(920,  H-50, 300, 50);
+    addPlatform(1280, H-50, 320, 50);
+    addSpikes(1420, H-65, 2, 15);
+    addPlatform(1660, H-50, 300, 50);
+    addPlatform(1660, 380, 110, 15);
+    Platform fake1 = addPlatform(1830, 380, 110, 15); 
+    fake1.fake = true;
+    addPlatform(2020, H-50, 300, 50);
+    Platform b1 = addPlatform(2070, 370, 100, 15); 
+    b1.bouncy = true;
+    addPlatform(2210, 220, 140, 15);
+    addPlatform(2380, H-50, 280, 50);
+    Platform m1 = addPlatform(2490, 360, 110, 15);
+    m1.moving = true; 
+    m1.mx = 2490; 
+    m1.mrange = 100; 
+    m1.mspeed = 1.3f;
+    addPlatform(2720, H-50, 200, 50);
+    addPlatform(2980, H-50, 220, 50);
+    Platform inv1 = addPlatform(3060, 360, 110, 15); 
+    inv1.invisible = true;
+    addPlatform(3260, H-50, 240, 50);
+    int pIdx = findPlatformAt(3260, H-50);
+    if (pIdx >= 0) addHole(pIdx, 80, 35, 200);
+    addPlatform(3560, H-50, 250, 50);
+    cannons.add(new Cannon(3580, H-90, false, 150));
+    addPlatform(3870, H-50, 300, 50);
+
 
         tutCards.add(new TutorialCard(20, "MOVEMENT", new Color(100, 200, 255),
             "A / D  or  ← →   to move",
@@ -538,6 +550,10 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if(state == State.WIN_LEVEL) {
             winTimer++;
             if(winTimer > 100) {
+                // Update highest unlocked level
+                if(currentLevel + 1 > highestUnlockedLevel) {
+                    highestUnlockedLevel = Math.min(currentLevel + 1, 4);
+                }
                 currentLevel++;
                 if(currentLevel >= 5) state = State.WIN_GAME;
                 else startLevel(currentLevel);
@@ -791,12 +807,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         switch(state) {
-            case MENU      -> drawMenu(g);
-            case PLAYING   -> drawGame(g);
-            case PAUSED    -> { drawGame(g); drawPauseMenu(g); }
-            case DEAD      -> { drawGame(g); drawDeathScreen(g); }
-            case WIN_LEVEL -> { drawGame(g); drawWinLevel(g); }
-            case WIN_GAME  -> drawWinGame(g);
+            case MENU         -> drawMenu(g);
+            case LEVEL_SELECT -> drawLevelSelect(g);
+            case PLAYING      -> drawGame(g);
+            case PAUSED       -> { drawGame(g); drawPauseMenu(g); }
+            case DEAD         -> { drawGame(g); drawDeathScreen(g); }
+            case WIN_LEVEL    -> { drawGame(g); drawWinLevel(g); }
+            case WIN_GAME     -> drawWinGame(g);
         }
     }
 
@@ -820,14 +837,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         drawPlayerChar(g, W/2-7, 195, true, (tick/8)%4);
 
-        String[] opts = {"▶  START GAME", "✕  QUIT"};
-        for(int i=0;i<opts.length;i++) {
+        for(int i=0;i<MENU_OPTIONS.length;i++) {
             boolean sel = (menuSel==i);
             g.setFont(new Font("Courier New", Font.BOLD, sel?26:22));
             Color col = sel ? new Color(255,200,80) : new Color(160,160,200);
-            if(sel){ g.setColor(new Color(255,200,80,40)); g.fillRoundRect(W/2-130,303+i*60-28,260,36,8,8); }
+            if(sel){ g.setColor(new Color(255,200,80,40)); g.fillRoundRect(W/2-130,283+i*55-28,260,36,8,8); }
             g.setColor(col);
-            g.drawString(opts[i], W/2-g.getFontMetrics().stringWidth(opts[i])/2, 303+i*60);
+            g.drawString(MENU_OPTIONS[i], W/2-g.getFontMetrics().stringWidth(MENU_OPTIONS[i])/2, 283+i*55);
         }
 
         g.setFont(new Font("Courier New", Font.PLAIN, 12));
@@ -844,6 +860,145 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.setColor(new Color(180,150,200));
             g.drawString(legend[i], W/2-g.getFontMetrics().stringWidth(legend[i])/2, 450+i*18);
         }
+    }
+
+    // ── LEVEL SELECT SCREEN ───────────────────────────────────
+    void drawLevelSelect(Graphics2D g) {
+        float t = tick * 0.01f;
+        Color c1 = new Color((int)(15+8*Math.sin(t)),(int)(20+10*Math.sin(t+1)),(int)(35+12*Math.sin(t+2)));
+        Color c2 = new Color((int)(40+15*Math.sin(t+3)),(int)(30+12*Math.sin(t+4)),(int)(70+18*Math.sin(t+5)));
+        g.setPaint(new GradientPaint(0,0,c1,W,H,c2));
+        g.fillRect(0,0,W,H);
+
+        // Title
+        g.setFont(new Font("Courier New", Font.BOLD, 36));
+        String title = "SELECT LEVEL";
+        drawShadowText(g, title, W/2-g.getFontMetrics().stringWidth(title)/2, 70,
+            new Color(100, 200, 255), new Color(30, 80, 120));
+
+        // Level cards
+        int cardW = 140, cardH = 160;
+        int spacing = 20;
+        int totalW = 5 * cardW + 4 * spacing;
+        int startX = W/2 - totalW/2;
+        int cardY = 120;
+
+        for(int i = 0; i < 5; i++) {
+            int cx = startX + i * (cardW + spacing);
+            boolean selected = (levelSelectSel == i);
+            boolean unlocked = (i <= highestUnlockedLevel);
+
+            // Card shadow
+            g.setColor(new Color(0, 0, 0, 80));
+            g.fillRoundRect(cx + 4, cardY + 4, cardW, cardH, 12, 12);
+
+            // Card background
+            if(unlocked) {
+                Color cardBg = selected ? new Color(40, 60, 100, 240) : new Color(25, 35, 60, 220);
+                g.setColor(cardBg);
+            } else {
+                g.setColor(new Color(30, 30, 40, 200));
+            }
+            g.fillRoundRect(cx, cardY, cardW, cardH, 12, 12);
+
+            // Border
+            if(selected && unlocked) {
+                g.setColor(new Color(255, 200, 80, 200));
+                g.setStroke(new BasicStroke(3f));
+            } else if(unlocked) {
+                g.setColor(new Color(100, 140, 200, 150));
+                g.setStroke(new BasicStroke(1.5f));
+            } else {
+                g.setColor(new Color(60, 60, 80, 150));
+                g.setStroke(new BasicStroke(1.5f));
+            }
+            g.drawRoundRect(cx, cardY, cardW, cardH, 12, 12);
+            g.setStroke(new BasicStroke(1f));
+
+            // Level number
+            g.setFont(new Font("Courier New", Font.BOLD, 48));
+            String num = String.valueOf(i + 1);
+            int numW = g.getFontMetrics().stringWidth(num);
+            if(unlocked) {
+                g.setColor(selected ? new Color(255, 220, 100) : new Color(180, 200, 255));
+            } else {
+                g.setColor(new Color(80, 80, 100));
+            }
+            g.drawString(num, cx + cardW/2 - numW/2, cardY + 60);
+
+            // Level name
+            g.setFont(new Font("Courier New", Font.BOLD, 11));
+            String name = LEVEL_NAMES[i];
+            int nameW = g.getFontMetrics().stringWidth(name);
+            if(unlocked) {
+                g.setColor(selected ? new Color(255, 240, 200) : new Color(160, 180, 220));
+            } else {
+                g.setColor(new Color(70, 70, 90));
+            }
+            g.drawString(name, cx + cardW/2 - nameW/2, cardY + 85);
+
+            // Lock icon for locked levels
+            if(!unlocked) {
+                g.setFont(new Font("Courier New", Font.BOLD, 28));
+                g.setColor(new Color(100, 80, 120));
+                String lock = "🔒";
+                int lockW = g.getFontMetrics().stringWidth(lock);
+                g.drawString(lock, cx + cardW/2 - lockW/2, cardY + 125);
+            } else {
+                // Difficulty indicator
+                g.setFont(new Font("Courier New", Font.PLAIN, 10));
+                g.setColor(new Color(140, 140, 180));
+                String diff = getDifficultyLabel(i);
+                int diffW = g.getFontMetrics().stringWidth(diff);
+                g.drawString(diff, cx + cardW/2 - diffW/2, cardY + 105);
+
+                // Stars or checkmark if completed
+                if(i < highestUnlockedLevel || (i == 4 && highestUnlockedLevel >= 4)) {
+                    g.setColor(new Color(100, 255, 150));
+                    g.setFont(new Font("Courier New", Font.BOLD, 16));
+                    String check = "✓";
+                    int checkW = g.getFontMetrics().stringWidth(check);
+                    g.drawString(check, cx + cardW/2 - checkW/2, cardY + 140);
+                }
+            }
+
+            // Selection indicator
+            if(selected && unlocked) {
+                g.setColor(new Color(255, 200, 80, (int)(100 + 50 * Math.sin(tick * 0.1))));
+                g.fillRoundRect(cx - 2, cardY - 2, cardW + 4, 4, 2, 2);
+            }
+        }
+
+        // Instructions
+        g.setFont(new Font("Courier New", Font.PLAIN, 13));
+        g.setColor(new Color(180, 180, 210));
+        String inst = "← →  Select Level   |   ENTER / SPACE  Start   |   ESC  Back";
+        g.drawString(inst, W/2 - g.getFontMetrics().stringWidth(inst)/2, cardY + cardH + 50);
+
+        // Hint about locked levels
+        if(levelSelectSel > highestUnlockedLevel) {
+            g.setFont(new Font("Courier New", Font.ITALIC, 12));
+            g.setColor(new Color(255, 150, 100));
+            String lockHint = "Complete previous levels to unlock!";
+            g.drawString(lockHint, W/2 - g.getFontMetrics().stringWidth(lockHint)/2, cardY + cardH + 75);
+        }
+
+        // Progress info
+        g.setFont(new Font("Courier New", Font.PLAIN, 11));
+        g.setColor(new Color(140, 160, 200));
+        String progress = "Progress: " + (highestUnlockedLevel + 1) + "/5 levels unlocked";
+        g.drawString(progress, W/2 - g.getFontMetrics().stringWidth(progress)/2, H - 40);
+    }
+
+    String getDifficultyLabel(int level) {
+        return switch(level) {
+            case 0 -> "★☆☆☆☆ Easy";
+            case 1 -> "★★☆☆☆ Medium";
+            case 2 -> "★★★☆☆ Hard";
+            case 3 -> "★★★★☆ Harder";
+            case 4 -> "★★★★★ Expert";
+            default -> "";
+        };
     }
 
     // ── GAME ──────────────────────────────────────────────────
@@ -895,18 +1050,24 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
 
             if(p.fake && p.fakeTriggered) {
+                // FAKE PLATFORM
                 float crumble = Math.min(1f, p.fakeTimer/25f);
                 g.setColor(new Color((int)(40+crumble*180),(int)(25*(1-crumble)),10));
                 g.fillRect(rx, p.y, p.w, p.h);
                 g.setColor(new Color(200,50,0));
-                for(int i=0;i<3;i++) g.drawLine(rx+i*p.w/3,p.y,rx+i*p.w/3+5,p.y+p.h);
+                for(int i=0;i<3;i++) 
+                    g.drawLine(rx+i*p.w/3,p.y,rx+i*p.w/3+5,p.y+p.h);
+
             } else if(p.fake) {
-                boolean blink = (blinkTick/20)%2==0;
-                g.setColor(blink ? new Color(80,50,120) : new Color(70,40,110));
-                drawPlatformSegmented(g, rx, p.y, p.w, p.h, holeMasks);
-                g.setColor(new Color(120,80,180));
-                g.fillRect(rx, p.y, p.w, 6);
+                // FAKE PLATFORM APPEARANCE
+                Color topCol = new Color(60+currentLevel*8,100-currentLevel*4,60+currentLevel*4);
+                g.setColor(new Color(50,35,15));
+                drawPlatformSegmented(g, rx, p.y+7, p.w, p.h-7, holeMasks);
+                g.setColor(topCol);
+                drawPlatformSegmented(g, rx, p.y, p.w, 7, holeMasks);
+
             } else if(p.bouncy) {
+                //BOUNCY PLATFORM APPEARANCE
                 float bounce = 0.5f+0.5f*(float)Math.sin(tick*0.2f);
                 int b=(int)(50+80*bounce);
                 g.setColor(new Color(b,(int)(150+50*bounce),(int)(200+50*bounce)));
@@ -915,18 +1076,19 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 g.fillRect(rx,p.y,p.w,5);
                 g.setColor(Color.WHITE);
                 g.setFont(new Font("Courier New",Font.BOLD,9));
-                if(p.w>40) g.drawString("↑↑↑",rx+p.w/2-10,p.y-2);
+                if(p.w>40) 
+                    g.drawString("↑↑↑",rx+p.w/2-10,p.y-2);
+
             } else if(p.shiftOnStep) {
-                g.setColor(new Color(180,140,30));
-                drawPlatformSegmented(g, rx, p.y, p.w, p.h, holeMasks);
-                g.setColor(new Color(240,200,60));
-                g.fillRect(rx,p.y,p.w,5);
-                if(!p.shiftTriggered) {
-                    g.setColor(new Color(255,230,80,120));
-                    g.setFont(new Font("Courier New",Font.BOLD,8));
-                    g.drawString("→",rx+p.w/2-3,p.y-2);
-                }
-            } else {
+                // MOVING PLATFORM
+                Color topCol = new Color(60+currentLevel*8,100-currentLevel*4,60+currentLevel*4);
+                g.setColor(new Color(50,35,15));
+                drawPlatformSegmented(g, rx, p.y+7, p.w, p.h-7, holeMasks);
+                g.setColor(topCol);
+                drawPlatformSegmented(g, rx, p.y, p.w, 7, holeMasks);
+                
+                } else {
+                // GROUND PLATFORM
                 Color topCol = new Color(60+currentLevel*8,100-currentLevel*4,60+currentLevel*4);
                 g.setColor(new Color(50,35,15));
                 drawPlatformSegmented(g, rx, p.y+7, p.w, p.h-7, holeMasks);
@@ -988,90 +1150,76 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
     // ── PAUSE MENU ────────────────────────────────────────────
     void drawPauseMenu(Graphics2D g) {
-        // Frosted overlay
         g.setColor(new Color(0, 0, 0, 170));
         g.fillRect(0, 0, W, H);
 
-        int pw = 420, ph = 310;
+        if(pauseLevelSelect) {
+            drawPauseLevelSelect(g);
+            return;
+        }
+
+        int pw = 420, ph = 340;
         int panX = W/2 - pw/2, panY = H/2 - ph/2;
 
-        // Panel shadow
         g.setColor(new Color(0, 0, 0, 100));
         g.fillRoundRect(panX+6, panY+6, pw, ph, 20, 20);
 
-        // Panel background
         g.setPaint(new GradientPaint(panX, panY, new Color(12, 8, 28, 245),
             panX, panY+ph, new Color(22, 12, 45, 245)));
         g.fillRoundRect(panX, panY, pw, ph, 20, 20);
 
-        // Border
         g.setColor(new Color(120, 80, 200, 200));
         g.setStroke(new BasicStroke(2f));
         g.drawRoundRect(panX, panY, pw, ph, 20, 20);
         g.setStroke(new BasicStroke(1f));
 
-        // Left accent bar
         g.setColor(new Color(150, 80, 255, 200));
         g.fillRoundRect(panX, panY+12, 5, ph-24, 4, 4);
 
-        // Title
         g.setFont(new Font("Courier New", Font.BOLD, 28));
         String title = "II  PAUSED";
-        drawShadowText(g, title,
-            W/2 - g.getFontMetrics().stringWidth(title)/2, panY + 44,
+        drawShadowText(g, title, W/2 - g.getFontMetrics().stringWidth(title)/2, panY + 44,
             new Color(180, 130, 255), new Color(60, 20, 100));
 
-        // Divider
         g.setColor(new Color(120, 80, 200, 80));
         g.fillRect(panX + 20, panY + 54, pw - 40, 1);
 
-        // Menu options
-        int optStartY = panY + 90;
-        int optSpacing = 46;
+        int optStartY = panY + 85;
+        int optSpacing = 44;
         for(int i = 0; i < PAUSE_OPTIONS.length; i++) {
             boolean sel = (pauseSel == i);
             int oy = optStartY + i * optSpacing;
 
             if(sel) {
-                // Highlight bar
                 g.setColor(new Color(120, 80, 200, 50));
                 g.fillRoundRect(panX + 14, oy - 22, pw - 28, 34, 8, 8);
                 g.setColor(new Color(150, 100, 255, 130));
                 g.setStroke(new BasicStroke(1.5f));
                 g.drawRoundRect(panX + 14, oy - 22, pw - 28, 34, 8, 8);
                 g.setStroke(new BasicStroke(1f));
-                // Arrow indicator
                 g.setColor(new Color(255, 200, 80));
                 g.setFont(new Font("Courier New", Font.BOLD, 14));
                 g.drawString("›", panX + 22, oy + 2);
             }
 
-            // Volume option: show slider instead of just label
-            if(i == 2) {
-                // Label
+            if(i == 3) { // Volume
                 g.setFont(new Font("Courier New", Font.BOLD, sel ? 18 : 16));
                 g.setColor(sel ? new Color(255, 200, 80) : new Color(160, 140, 200));
                 g.drawString(PAUSE_OPTIONS[i], panX + 40, oy + 2);
 
-                // Volume bar
                 int barX = panX + 190, barY = oy - 10, barW = 180, barH = 10;
-                // Track
                 g.setColor(new Color(60, 40, 100));
                 g.fillRoundRect(barX, barY, barW, barH, 5, 5);
-                // Fill
                 int fillW = (int)(barW * (volume / 100.0));
                 Color barFill = sel ? new Color(200, 140, 255) : new Color(120, 80, 180);
                 g.setColor(barFill);
                 g.fillRoundRect(barX, barY, fillW, barH, 5, 5);
-                // Thumb
                 g.setColor(sel ? new Color(255, 220, 100) : new Color(200, 170, 255));
                 g.fillOval(barX + fillW - 7, barY - 3, 14, 14);
-                // Volume percent label
                 g.setFont(new Font("Courier New", Font.PLAIN, 11));
                 g.setColor(new Color(200, 180, 230));
                 g.drawString(volume + "%", barX + barW + 6, barY + 9);
 
-                // Adjustment hint if selected
                 if(sel) {
                     g.setFont(new Font("Courier New", Font.PLAIN, 10));
                     g.setColor(new Color(180, 160, 220, 180));
@@ -1084,11 +1232,125 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // Footer hint
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
         g.setColor(new Color(140, 120, 180, 180));
         String hint = "↑ ↓ : Navigate   ENTER / SPACE : Select   ESC : Resume";
         g.drawString(hint, W/2 - g.getFontMetrics().stringWidth(hint)/2, panY + ph - 12);
+    }
+
+    // ── PAUSE LEVEL SELECT SUB-MENU ───────────────────────────
+    void drawPauseLevelSelect(Graphics2D g) {
+        int pw = 500, ph = 280;
+        int panX = W/2 - pw/2, panY = H/2 - ph/2;
+
+        g.setColor(new Color(0, 0, 0, 100));
+        g.fillRoundRect(panX+6, panY+6, pw, ph, 20, 20);
+
+        g.setPaint(new GradientPaint(panX, panY, new Color(12, 18, 35, 245),
+            panX, panY+ph, new Color(18, 28, 50, 245)));
+        g.fillRoundRect(panX, panY, pw, ph, 20, 20);
+
+        g.setColor(new Color(80, 150, 200, 200));
+        g.setStroke(new BasicStroke(2f));
+        g.drawRoundRect(panX, panY, pw, ph, 20, 20);
+        g.setStroke(new BasicStroke(1f));
+
+        g.setFont(new Font("Courier New", Font.BOLD, 22));
+        String title = "⊞  SELECT LEVEL";
+        drawShadowText(g, title, W/2 - g.getFontMetrics().stringWidth(title)/2, panY + 36,
+            new Color(100, 200, 255), new Color(30, 80, 120));
+
+        // Level buttons
+        int btnW = 80, btnH = 90;
+        int spacing = 12;
+        int totalBtnW = 5 * btnW + 4 * spacing;
+        int startX = panX + pw/2 - totalBtnW/2;
+        int btnY = panY + 60;
+
+        for(int i = 0; i < 5; i++) {
+            int bx = startX + i * (btnW + spacing);
+            boolean selected = (pauseLevelSel == i);
+            boolean unlocked = (i <= highestUnlockedLevel);
+
+            // Button background
+            if(unlocked) {
+                Color btnBg = selected ? new Color(50, 80, 130, 230) : new Color(30, 50, 80, 200);
+                g.setColor(btnBg);
+            } else {
+                g.setColor(new Color(40, 40, 55, 180));
+            }
+            g.fillRoundRect(bx, btnY, btnW, btnH, 10, 10);
+
+            // Border
+            if(selected && unlocked) {
+                g.setColor(new Color(255, 200, 80, 220));
+                g.setStroke(new BasicStroke(2.5f));
+            } else if(unlocked) {
+                g.setColor(new Color(100, 160, 220, 150));
+                g.setStroke(new BasicStroke(1.5f));
+            } else {
+                g.setColor(new Color(70, 70, 90, 150));
+                g.setStroke(new BasicStroke(1f));
+            }
+            g.drawRoundRect(bx, btnY, btnW, btnH, 10, 10);
+            g.setStroke(new BasicStroke(1f));
+
+            // Level number
+            g.setFont(new Font("Courier New", Font.BOLD, 32));
+            String num = String.valueOf(i + 1);
+            int numW = g.getFontMetrics().stringWidth(num);
+            if(unlocked) {
+                g.setColor(selected ? new Color(255, 220, 100) : new Color(180, 210, 255));
+            } else {
+                g.setColor(new Color(90, 90, 110));
+            }
+            g.drawString(num, bx + btnW/2 - numW/2, btnY + 40);
+
+            // Level name
+            g.setFont(new Font("Courier New", Font.PLAIN, 9));
+            String name = LEVEL_NAMES[i];
+            int nameW = g.getFontMetrics().stringWidth(name);
+            if(unlocked) {
+                g.setColor(selected ? new Color(255, 240, 200) : new Color(150, 180, 220));
+            } else {
+                g.setColor(new Color(80, 80, 100));
+            }
+            g.drawString(name, bx + btnW/2 - nameW/2, btnY + 58);
+
+            // Lock or checkmark
+            if(!unlocked) {
+                g.setFont(new Font("Courier New", Font.BOLD, 18));
+                g.setColor(new Color(100, 80, 120));
+                g.drawString("🔒", bx + btnW/2 - 10, btnY + 80);
+            } else if(i < highestUnlockedLevel) {
+                g.setFont(new Font("Courier New", Font.BOLD, 14));
+                g.setColor(new Color(100, 255, 150));
+                g.drawString("✓", bx + btnW/2 - 5, btnY + 78);
+            }
+
+            // Current level indicator
+            if(i == currentLevel && unlocked) {
+                g.setFont(new Font("Courier New", Font.PLAIN, 8));
+                g.setColor(new Color(255, 180, 80));
+                String curr = "CURRENT";
+                int currW = g.getFontMetrics().stringWidth(curr);
+                g.drawString(curr, bx + btnW/2 - currW/2, btnY + btnH + 12);
+            }
+        }
+
+        // Instructions
+        g.setFont(new Font("Courier New", Font.PLAIN, 12));
+        g.setColor(new Color(160, 180, 220));
+        String inst = "← →  Select   |   ENTER  Start   |   ESC  Back";
+        g.drawString(inst, W/2 - g.getFontMetrics().stringWidth(inst)/2, panY + ph - 40);
+
+        // Lock hint
+        if(pauseLevelSel > highestUnlockedLevel) {
+            g.setFont(new Font("Courier New", Font.ITALIC, 11));
+            g.setColor(new Color(255, 150, 100));
+            String lockHint = "Complete previous levels to unlock!";
+            g.drawString(lockHint, W/2 - g.getFontMetrics().stringWidth(lockHint)/2, panY + ph - 18);
+        }
     }
 
     // ── Tutorial zone section labels ─────────────────────────
@@ -1250,7 +1512,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setColor(new Color(255,100,100));
         g.drawString("DEATHS: "+deaths,16,63);
 
-        // Pause hint (top-right)
         g.setFont(new Font("Courier New",Font.PLAIN,11));
         g.setColor(new Color(255,255,255,70));
         String pauseHint = "ESC: Pause";
@@ -1397,11 +1658,30 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         // ── MAIN MENU ────────────────────────────────────────
         if(state == State.MENU){
             if(k==KeyEvent.VK_UP  ||k==KeyEvent.VK_W) menuSel=Math.max(0,menuSel-1);
-            if(k==KeyEvent.VK_DOWN||k==KeyEvent.VK_S) menuSel=Math.min(1,menuSel+1);
+            if(k==KeyEvent.VK_DOWN||k==KeyEvent.VK_S) menuSel=Math.min(2,menuSel+1);
             if(k==KeyEvent.VK_ENTER||k==KeyEvent.VK_SPACE){
-                if(menuSel==0){ currentLevel=0; totalScore=0; deaths=0; startLevel(0); }
-                else System.exit(0);
+                switch(menuSel) {
+                    case 0 -> { currentLevel=0; totalScore=0; deaths=0; startLevel(0); }
+                    case 1 -> { levelSelectSel=0; state=State.LEVEL_SELECT; }
+                    case 2 -> System.exit(0);
+                }
             }
+            return;
+        }
+
+        // ── LEVEL SELECT ─────────────────────────────────────
+        if(state == State.LEVEL_SELECT) {
+            if(k==KeyEvent.VK_LEFT ||k==KeyEvent.VK_A) levelSelectSel = Math.max(0, levelSelectSel-1);
+            if(k==KeyEvent.VK_RIGHT||k==KeyEvent.VK_D) levelSelectSel = Math.min(4, levelSelectSel+1);
+            if(k==KeyEvent.VK_ENTER||k==KeyEvent.VK_SPACE) {
+                if(levelSelectSel <= highestUnlockedLevel) {
+                    currentLevel = levelSelectSel;
+                    totalScore = 0;
+                    deaths = 0;
+                    startLevel(currentLevel);
+                }
+            }
+            if(k==KeyEvent.VK_ESCAPE) state = State.MENU;
             return;
         }
 
@@ -1426,9 +1706,9 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
         if(k==KeyEvent.VK_ESCAPE) {
             if(state==State.PLAYING) {
-                // Freeze inputs when pausing
                 leftDown=false; rightDown=false; jumpDown=false;
                 pauseSel=0;
+                pauseLevelSelect=false;
                 state=State.PAUSED;
             } else if(state==State.DEAD) {
                 state=State.MENU; particles.clear(); leftDown=rightDown=jumpDown=false;
@@ -1437,8 +1717,23 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
 
     void handlePauseKey(int k) {
+        // If in level select sub-menu
+        if(pauseLevelSelect) {
+            if(k==KeyEvent.VK_LEFT ||k==KeyEvent.VK_A) pauseLevelSel = Math.max(0, pauseLevelSel-1);
+            if(k==KeyEvent.VK_RIGHT||k==KeyEvent.VK_D) pauseLevelSel = Math.min(4, pauseLevelSel+1);
+            if(k==KeyEvent.VK_ENTER||k==KeyEvent.VK_SPACE) {
+                if(pauseLevelSel <= highestUnlockedLevel) {
+                    currentLevel = pauseLevelSel;
+                    pauseLevelSelect = false;
+                    startLevel(currentLevel);
+                }
+            }
+            if(k==KeyEvent.VK_ESCAPE) pauseLevelSelect = false;
+            return;
+        }
+
         // Volume adjustment mode
-        if(pauseSel == 2) {
+        if(pauseSel == 3) {
             if(k==KeyEvent.VK_LEFT) {
                 volume = Math.max(0, volume - 5);
                 applyVolume();
@@ -1466,13 +1761,16 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 case 1 -> { // Restart level
                     startLevel(currentLevel);
                 }
-                case 2 -> { // Volume — just stay on this item, ←/→ adjusts it
-                    // Selecting Volume with ENTER nudges it up by 10 as a shortcut
+                case 2 -> { // Level Select
+                    pauseLevelSel = currentLevel;
+                    pauseLevelSelect = true;
+                }
+                case 3 -> { // Volume
                     volume = Math.min(100, volume + 10);
                     if(volume > 100) volume = 0;
                     applyVolume();
                 }
-                case 3 -> { // Quit to menu
+                case 4 -> { // Quit to menu
                     state = State.MENU;
                     particles.clear();
                     leftDown=false; rightDown=false; jumpDown=false;
@@ -1486,27 +1784,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    /**
-     * Hook this method into your javax.sound.sampled.Clip once you add music.
-     *
-     * Example:
-     *   Clip musicClip;  // your background music clip
-     *
-     *   void applyVolume() {
-     *       if (musicClip != null && musicClip.isControlSupported(FloatControl.Type.MASTER_GAIN)) {
-     *           FloatControl gainControl =
-     *               (FloatControl) musicClip.getControl(FloatControl.Type.MASTER_GAIN);
-     *           // Convert 0-100 linear volume to decibels
-     *           float dB = (volume == 0) ? gainControl.getMinimum()
-     *                      : 20f * (float) Math.log10(volume / 100.0);
-     *           dB = Math.max(gainControl.getMinimum(), Math.min(gainControl.getMaximum(), dB));
-     *           gainControl.setValue(dB);
-     *       }
-     *   }
-     */
     void applyVolume() {
         // Placeholder — wire up to your Clip's FloatControl here.
-        // System.out.println("Volume set to: " + volume + "%");
     }
 
     @Override
