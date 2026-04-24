@@ -542,7 +542,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
 
     // ── LEVEL 5 ──────────────────────────────────────────────
-// ── LEVEL 5 ──────────────────────────────────────────────
     boolean goalSwitched = false;
 
     void buildLevel5() {
@@ -565,7 +564,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         addPlatform(3440, H-50, 200, 50);
         addPlatform(3720, H-50, 600, 50); // extended end
 
-        // ── RETURN PATH (important for reverse gameplay)
+        // ── RETURN PATH
         addPlatform(3600, H-180, 140, 15);
         addPlatform(3400, H-260, 140, 15);
         addPlatform(2600, H-220, 120, 15);
@@ -956,7 +955,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         g.setFont(new Font("Courier New", Font.PLAIN, 15));
         g.setColor(new Color(200, 200, 220));
-        String sub = "A troll platformer. Easier now, but still sneaky.";
+        String sub = "A normal platformer. Keep calm and keep on going!";
         g.drawString(sub, W / 2 - g.getFontMetrics().stringWidth(sub) / 2, 168);
 
         drawPlayerChar(g, W / 2 - 7, 195, true, (tick / 8) % 4);
@@ -1571,7 +1570,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
     String getLevelName() {
         return switch(currentLevel) {
-            case 0 -> "Tutorial"; case 1 -> "Getting There"; case 2 -> "Troll Central";
+            case 0 -> "Tutorial"; case 1 -> "Getting There"; case 2 -> "Halfway Through";
             case 3 -> "Almost There"; case 4 -> "The Finale"; default -> "???";
         };
     }
@@ -1662,9 +1661,9 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         g.setFont(new Font("Courier New", Font.ITALIC, 18));
         String[] lines = {
-            "Against all odds. Against all trolls.",
+            "Against all odds. Against...whatever that was.",
             "You, a tiny letter 'i', survived 5 levels.",
-            "The dot on your head wobbled with pride.",
+            "You didn't give up here, so don't give up there!",
             "",
             "Final Score: " + totalScore,
             "Total Deaths: " + deaths + "  (" + getRank() + ")"
@@ -1697,7 +1696,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         else if(deaths < 15) return "Genuinely impressive";
         else if(deaths < 30) return "Solid run";
         else if(deaths < 60) return "Getting there";
-        else if(deaths < 100) return "Persistent";
+        else if(deaths < 100) return "Determination";
         else return "Never give up!";
     }
 
