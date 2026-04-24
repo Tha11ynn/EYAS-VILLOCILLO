@@ -542,9 +542,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
 
     // ── LEVEL 5 ──────────────────────────────────────────────
+// ── LEVEL 5 ──────────────────────────────────────────────
+    boolean goalSwitched = false;
+
     void buildLevel5() {
-        levelW = 4200;
-        
+        levelW = 4400;
+        goalSwitched = false;
+
         // Ground platforms
         addPlatform(0, H-50, 260, 50);
         addPlatform(360, H-50, 200, 50);
@@ -559,51 +563,68 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         addPlatform(2880, H-50, 200, 50);
         addPlatform(3160, H-50, 200, 50);
         addPlatform(3440, H-50, 200, 50);
-        addPlatform(3720, H-50, 480, 50);
-        
-        // Elevated platforms with heavy spike hazards
+        addPlatform(3720, H-50, 600, 50); // extended end
+
+        // ── RETURN PATH (important for reverse gameplay)
+        addPlatform(3600, H-180, 140, 15);
+        addPlatform(3400, H-260, 140, 15);
+        addPlatform(2600, H-220, 120, 15);
+        addPlatform(900, H-220, 120, 15);
+
+        // Elevated platforms
         addPlatform(460, H-180, 120, 15);
-        addSpikes(480, H-195, 2, 15); // Spikes on elevated
-        
+        addSpikes(480, H-195, 2, 15);
+
         Platform b1 = addPlatform(740, H-180, 120, 15);
         b1.bouncy = true;
-        
+
         addPlatform(820, H-280, 130, 15);
-        addSpikes(840, H-295, 3, 15); // Spikes on high platform
-        
+        addSpikes(840, H-295, 3, 15);
+
         Platform fake1 = addPlatform(1020, H-180, 120, 15);
         fake1.fake = true;
-        
+
         Platform mov1 = addPlatform(1300, H-180, 110, 15);
-        mov1.moving = true; mov1.mx = 1300; mov1.mrange = 110; mov1.mspeed = 1.6f;
-        
+        mov1.moving = true;
+        mov1.mx = 1300;
+        mov1.mrange = 110;
+        mov1.mspeed = 1.6f;
+
         Platform inv1 = addPlatform(1580, H-180, 120, 15);
         inv1.invisible = true;
-        
+
         Platform shift1 = addPlatform(1860, H-180, 120, 15);
-        shift1.shiftOnStep = true; shift1.shiftDist = 110;
-        
+        shift1.shiftOnStep = true;
+        shift1.shiftDist = 80; // reduced for reverse fairness
+
         Platform mov2 = addPlatform(2140, H-180, 110, 15);
-        mov2.moving = true; mov2.mx = 2140; mov2.mrange = 120; mov2.mspeed = 2.0f;
-        
+        mov2.moving = true;
+        mov2.mx = 2140;
+        mov2.mrange = 120;
+        mov2.mspeed = 2.0f;
+
         Platform b2 = addPlatform(2420, H-180, 120, 15);
         b2.bouncy = true;
-        
+
         addPlatform(2500, H-280, 130, 15);
-        addSpikes(2520, H-295, 3, 15); // Spikes on high platform
-        
+        addSpikes(2520, H-295, 3, 15);
+
         Platform inv2 = addPlatform(2700, H-180, 120, 15);
         inv2.invisible = true;
-        
+
         Platform shift2 = addPlatform(2980, H-180, 120, 15);
-        shift2.shiftOnStep = true; shift2.shiftDist = -110;
-        
-        Platform mov3 = addPlatform(3260, H-190, 100, 15);
-        mov3.moving = true; mov3.mx = 3260; mov3.mrange = 100; mov3.mspeed = 2.2f;
-        
+        shift2.shiftOnStep = true;
+        shift2.shiftDist = -110;
+
+        Platform mov3 = addPlatform(3160, H-190, 100, 15);
+        mov3.moving = true;
+        mov3.mx = 3160;
+        mov3.mrange = 200;
+        mov3.mspeed = 2.2f;
+
         addPlatform(3500, H-200, 110, 15);
-        addSpikes(3515, H-215, 3, 15); // Spikes on final elevated
-        
+        addSpikes(3515, H-215, 3, 15);
+
         // Ground spikes
         addSpikes(370, H-65, 2, 15);
         addSpikes(930, H-65, 2, 15);
@@ -614,17 +635,19 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         addSpikes(2890, H-65, 2, 15);
         addSpikes(3170, H-65, 2, 15);
         addSpikes(3450, H-65, 2, 15);
-        
+
         // Chasing spike
         addSpikeChasing(-600, H-65, 15, 1.4f);
-        
+
         // Cannons
         cannons.add(new Cannon(1480, H-90, false, 110));
         cannons.add(new Cannon(2320, H-90, true, 100));
         cannons.add(new Cannon(2880, H-90, false, 95));
         cannons.add(new Cannon(3440, H-90, false, 90));
-        
-        goalX = 3900; goalY = H-110;
+
+        // Initial goal (end of level)
+        goalX = 3900;
+        goalY = H-110;
     }
 
     // ── Helpers ───────────────────────────────────────────────
@@ -799,6 +822,23 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         float targetCam = px - W / 2f + playerW / 2f;
         camX += (targetCam - camX) * 0.10f;
         camX = Math.max(0, Math.min(camX, levelW - W));
+
+        // ── LEVEL 5 GOAL FAKE-OUT ─────────────────────────────
+        if (currentLevel == 4 && !goalSwitched && px > 3700) {
+            goalSwitched = true;
+
+            // Move goal to start
+            goalX = 100;
+            goalY = H - 110;
+
+            // Reverse chasing spikes
+            for (Spike s : spikes) {
+                if (s.chasing) {
+                    s.cx = levelW + 200;
+                    s.cspeed = -1.6f;
+                }
+            }
+        }
 
         Rectangle goalRect = new Rectangle(goalX, goalY, GOAL_W, GOAL_H);
         if(new Rectangle((int)px, (int)py, playerW, playerH).intersects(goalRect)) {
