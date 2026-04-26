@@ -1266,10 +1266,57 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
 
     void drawGame(Graphics2D g) {
+        if (!menuParticlesInit) initMenuParticles();
+        updateMenuParticles();
+        
         int cx = (int)camX;
 
-        g.setPaint(new GradientPaint(0, 0, new Color(8, 8, 35), 0, H, new Color(20, 18, 55)));
+        // ── Animated gradient background (like menu) ────────────
+        float t = tick * 0.01f;
+        Color bg1 = new Color(
+            (int)(10 + 8 * Math.sin(t)),
+            (int)(3  + 4 * Math.sin(t + 1)),
+            (int)(28 + 12 * Math.sin(t + 2)));
+        Color bg2 = new Color(
+            (int)(35 + 18 * Math.sin(t + 3)),
+            (int)(6  +  6 * Math.sin(t + 4)),
+            (int)(65 + 22 * Math.sin(t + 5)));
+        g.setPaint(new GradientPaint(0, 0, bg1, W, H, bg2));
         g.fillRect(0, 0, W, H);
+
+        // ── Radial gradient overlay (like menu) ────────────────
+        float[] vFrac = {0f, 0.4f, 1f};
+        Color[] vCol  = {new Color(0,0,0,0), new Color(0,0,0,0), new Color(0,0,0,120)};
+        g.setPaint(new RadialGradientPaint(W/2f, H/2f, W*0.75f, vFrac, vCol));
+        g.fillRect(0, 0, W, H);
+        g.setPaint(null);
+
+        // ── Scan lines (like menu) ─────────────────────────────
+        for (int sy = 0; sy < H; sy += 4) {
+            g.setColor(new Color(0, 0, 0, 26));
+            g.fillRect(0, sy, W, 2);
+        }
+
+        // ── Animated particles (like menu) ─────────────────────
+        for (int i = 0; i < menuParticleX.length; i++) {
+            float life = (float)(0.5 + 0.5 * Math.sin(tick * 0.04f + i * 0.53f));
+            int   alpha = (int)(40 + 120 * life);
+            float sz    = menuParticleSz[i] * (0.7f + 0.3f * life);
+            int hue = (menuParticleHue[i] + tick / 3) % 360;
+            Color pc = Color.getHSBColor(hue / 360f, 0.6f, 1.0f);
+            g.setColor(new Color(pc.getRed(), pc.getGreen(), pc.getBlue(), alpha / 4));
+            g.fillOval((int)(menuParticleX[i] - sz * 1.8f), (int)(menuParticleY[i] - sz * 1.8f),
+                       (int)(sz * 3.6f), (int)(sz * 3.6f));
+            g.setColor(new Color(pc.getRed(), pc.getGreen(), pc.getBlue(), alpha));
+            g.fillOval((int)(menuParticleX[i] - sz / 2), (int)(menuParticleY[i] - sz / 2),
+                    (int)sz, (int)sz);
+        }
+
+        // ── Corner flourishes (like menu) ──────────────────────
+        drawCornerFlourishMenu(g, 0, 0, false, false);
+        drawCornerFlourishMenu(g, W, 0, true,  false);
+        drawCornerFlourishMenu(g, 0, H, false, true);
+        drawCornerFlourishMenu(g, W, H, true,  true);
 
         int moonX = W - 130, moonY = 45;
         for (int gi = 4; gi >= 1; gi--) {
