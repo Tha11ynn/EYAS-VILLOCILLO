@@ -44,10 +44,10 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ── Death Animation ──────────────────────────────────────
     static final int DEATH_ANIM_TICKS = 55;
     int deathAnimTimer = 0;
-    float deathX, deathY; // position where player died
+    float deathX, deathY;
     static class BodyPart {
         float x, y, vx, vy, rot, rotV;
-        int type; // 0=head/dot, 1=body, 2=leg, 3=arm
+        int type;
         int life;
         Color color;
         BodyPart(float x, float y, float vx, float vy, float rotV, int type, Color c) {
@@ -216,7 +216,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         state = State.PLAYING;
     }
 
-    // ── LEVEL 1: Tutorial ────────────────────────────────────
     void buildLevel1() {
         levelW = 4100;
         addPlatform(0, H-50, 500, 50);
@@ -280,7 +279,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         goalX = 3950; goalY = H-110;
     }
 
-    // ── LEVEL 2 ──────────────────────────────────────────────
     void buildLevel2() {
         levelW = 3200;
         addPlatform(0, H-50, 280, 50); addPlatform(340, H-50, 220, 50);
@@ -313,7 +311,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         goalX = 2800; goalY = H-110;
     }
 
-    // ── LEVEL 3 ──────────────────────────────────────────────
     void buildLevel3() {
         levelW = 3700;
         addPlatform(0, H-50, 220, 50); addPlatform(290, H-50, 180, 50);
@@ -356,7 +353,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         goalX = 3400; goalY = H-110;
     }
 
-    // ── LEVEL 4 ──────────────────────────────────────────────
     void buildLevel4() {
         levelW = 4000;
         addPlatform(0, H-50, 180, 50); addPlatform(260, H-50, 160, 50);
@@ -404,7 +400,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         goalX = 3700; goalY = H-110;
     }
 
-    // ── LEVEL 5 ──────────────────────────────────────────────
     boolean goalSwitched = false;
 
     void buildLevel5() {
@@ -451,7 +446,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         goalX = 3900; goalY = H-110;
     }
 
-    // ── Helpers ───────────────────────────────────────────────
     Platform addPlatform(int x, int y, int w, int h) {
         Platform p = new Platform(x, y, w, h);
         platforms.add(p); return p;
@@ -489,11 +483,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         repaint();
     }
 
-    // ── Death animation update ────────────────────────────────
     void updateDeathAnim() {
         deathAnimTimer++;
-
-        // Screen shake
         if(screenShakeTick > 0) {
             screenShakeTick--;
             screenShakeX = (rng.nextFloat() - 0.5f) * 10f * (screenShakeTick / 18f);
@@ -501,26 +492,18 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         } else {
             screenShakeX = 0; screenShakeY = 0;
         }
-
-        // Update body parts physics
         for(BodyPart bp : bodyParts) {
-            bp.x += bp.vx;
-            bp.y += bp.vy;
-            bp.vy += 0.45f; // gravity on parts
-            bp.vx *= 0.98f;
-            bp.rot += bp.rotV;
-            bp.life--;
+            bp.x += bp.vx; bp.y += bp.vy;
+            bp.vy += 0.45f; bp.vx *= 0.98f;
+            bp.rot += bp.rotV; bp.life--;
         }
         bodyParts.removeIf(bp -> bp.life <= 0);
-
-        // Update particles
         Iterator<Particle> it = particles.iterator();
         while(it.hasNext()) {
             Particle p = it.next();
             p.x += p.vx; p.y += p.vy; p.vy += 0.15f; p.life--;
             if(p.life <= 0) it.remove();
         }
-
         if(deathAnimTimer >= DEATH_ANIM_TICKS) {
             state = State.DEAD;
             bodyParts.clear();
@@ -529,9 +512,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
     void update() {
         levelTimer++;
-
         if(currentLevel == 0) updateTutorialCards();
-
         if(jumpDown) jumpBufferTimer = JUMP_BUFFER;
         else if(jumpBufferTimer > 0) jumpBufferTimer--;
 
@@ -555,14 +536,11 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         boolean canJump = coyoteTimer > 0 && !jumpConsumed;
         if(jumpBufferTimer > 0 && canJump) {
-            pvy = JUMP_VEL;
-            jumpConsumed = true;
-            jumpBufferTimer = 0;
-            coyoteTimer = 0;
+            pvy = JUMP_VEL; jumpConsumed = true;
+            jumpBufferTimer = 0; coyoteTimer = 0;
             spawnDust();
         }
         if(!jumpDown) jumpConsumed = false;
-
         if(!jumpDown && pvy < -6f) pvy = Math.max(pvy + 1.2f, -6f);
         pvy = Math.min(pvy + GRAVITY, MAX_FALL);
 
@@ -604,7 +582,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         onGround = false;
         Rectangle pr = new Rectangle((int)px, (int)py, playerW, playerH);
-
         for(Platform p : platforms) {
             if(p.fake && p.fakeTimer > 50) continue;
             Rectangle pl = p.rect();
@@ -661,7 +638,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         camX += (targetCam - camX) * 0.10f;
         camX = Math.max(0, Math.min(camX, levelW - W));
 
-        // ── LEVEL 5 GOAL FAKE-OUT ─────────────────────────────
         if (currentLevel == 4 && !goalSwitched && px > 3700) {
             goalSwitched = true;
             goalX = 100; goalY = H - 110;
@@ -709,74 +685,57 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             lastDeathMsg = idx;
             currentDeathMsg = DEATH_MSGS[idx];
         }
-        // Record death position and start animation
-        deathX = px;
-        deathY = py;
-        deathAnimTimer = 0;
-        screenShakeTick = 18;
+        deathX = px; deathY = py;
+        deathAnimTimer = 0; screenShakeTick = 18;
         spawnDeathAnimation();
         state = State.DYING;
     }
 
-    // ── Spawn body parts for death animation ──────────────────
     void spawnDeathAnimation() {
         float cx = px + playerW / 2f;
         float cy = py + playerH / 2f;
-
-        // Big initial flash particles
         for(int i = 0; i < 20; i++) {
             float a = (float)(rng.nextDouble() * Math.PI * 2);
             float s = 3 + rng.nextFloat() * 6;
             particles.add(new Particle(cx, cy,
-                (float)Math.cos(a) * s, (float)Math.sin(a) * s,
-                18 + rng.nextInt(15), new Color(255, 200 + rng.nextInt(55), 80)));
+                (float)Math.cos(a)*s, (float)Math.sin(a)*s,
+                18+rng.nextInt(15), new Color(255,200+rng.nextInt(55),80)));
         }
-        // Red/dark particles
         for(int i = 0; i < 16; i++) {
             float a = (float)(rng.nextDouble() * Math.PI * 2);
             float s = 2 + rng.nextFloat() * 4;
             particles.add(new Particle(cx, cy,
-                (float)Math.cos(a) * s, (float)Math.sin(a) * s,
-                20 + rng.nextInt(20), new Color(200 + rng.nextInt(55), 30 + rng.nextInt(60), 10)));
+                (float)Math.cos(a)*s, (float)Math.sin(a)*s,
+                20+rng.nextInt(20), new Color(200+rng.nextInt(55),30+rng.nextInt(60),10)));
         }
-
-        // Head/dot — flies up and spins
-        bodyParts.add(new BodyPart(cx - 4, py - 2,
-            (rng.nextFloat() - 0.5f) * 4f, -9f - rng.nextFloat() * 3f,
-            0.18f + rng.nextFloat() * 0.12f, 0, new Color(230, 200, 255)));
-
-        // Body segment — splits into 2
-        bodyParts.add(new BodyPart(cx - 3, py + 14,
-            -2f - rng.nextFloat() * 2f, -5f - rng.nextFloat() * 2f,
-            -0.12f - rng.nextFloat() * 0.1f, 1, new Color(220, 220, 255)));
-        bodyParts.add(new BodyPart(cx - 3, py + 22,
-            2f + rng.nextFloat() * 2f, -3f - rng.nextFloat() * 2f,
-            0.14f + rng.nextFloat() * 0.1f, 1, new Color(200, 200, 240)));
-
-        // Legs — fly outward
-        bodyParts.add(new BodyPart(cx - 5, py + playerH - 10,
-            -4f - rng.nextFloat() * 3f, -4f - rng.nextFloat() * 2f,
-            -0.2f - rng.nextFloat() * 0.15f, 2, new Color(60, 60, 100)));
-        bodyParts.add(new BodyPart(cx + 2, py + playerH - 10,
-            4f + rng.nextFloat() * 3f, -5f - rng.nextFloat() * 2f,
-            0.2f + rng.nextFloat() * 0.15f, 2, new Color(60, 60, 110)));
-
-        // Arms
-        bodyParts.add(new BodyPart(cx - 8, py + 18,
-            -5f - rng.nextFloat() * 3f, -3f - rng.nextFloat() * 3f,
-            -0.25f - rng.nextFloat() * 0.1f, 3, new Color(180, 180, 230)));
-        bodyParts.add(new BodyPart(cx + 5, py + 18,
-            5f + rng.nextFloat() * 3f, -4f - rng.nextFloat() * 2f,
-            0.22f + rng.nextFloat() * 0.1f, 3, new Color(180, 180, 220)));
-
-        // Extra sparkle fragments
+        bodyParts.add(new BodyPart(cx-4, py-2,
+            (rng.nextFloat()-0.5f)*4f, -9f-rng.nextFloat()*3f,
+            0.18f+rng.nextFloat()*0.12f, 0, new Color(230,200,255)));
+        bodyParts.add(new BodyPart(cx-3, py+14,
+            -2f-rng.nextFloat()*2f, -5f-rng.nextFloat()*2f,
+            -0.12f-rng.nextFloat()*0.1f, 1, new Color(220,220,255)));
+        bodyParts.add(new BodyPart(cx-3, py+22,
+            2f+rng.nextFloat()*2f, -3f-rng.nextFloat()*2f,
+            0.14f+rng.nextFloat()*0.1f, 1, new Color(200,200,240)));
+        bodyParts.add(new BodyPart(cx-5, py+playerH-10,
+            -4f-rng.nextFloat()*3f, -4f-rng.nextFloat()*2f,
+            -0.2f-rng.nextFloat()*0.15f, 2, new Color(60,60,100)));
+        bodyParts.add(new BodyPart(cx+2, py+playerH-10,
+            4f+rng.nextFloat()*3f, -5f-rng.nextFloat()*2f,
+            0.2f+rng.nextFloat()*0.15f, 2, new Color(60,60,110)));
+        bodyParts.add(new BodyPart(cx-8, py+18,
+            -5f-rng.nextFloat()*3f, -3f-rng.nextFloat()*3f,
+            -0.25f-rng.nextFloat()*0.1f, 3, new Color(180,180,230)));
+        bodyParts.add(new BodyPart(cx+5, py+18,
+            5f+rng.nextFloat()*3f, -4f-rng.nextFloat()*2f,
+            0.22f+rng.nextFloat()*0.1f, 3, new Color(180,180,220)));
         for(int i = 0; i < 8; i++) {
             float a = (float)(rng.nextDouble() * Math.PI * 2);
             float spd = 2 + rng.nextFloat() * 5;
-            particles.add(new Particle(cx + (rng.nextFloat()-0.5f)*8, cy + (rng.nextFloat()-0.5f)*8,
-                (float)Math.cos(a)*spd, (float)Math.sin(a)*spd - 2,
-                25 + rng.nextInt(20),
-                new Color(150 + rng.nextInt(105), 100 + rng.nextInt(100), 200 + rng.nextInt(55))));
+            particles.add(new Particle(cx+(rng.nextFloat()-0.5f)*8, cy+(rng.nextFloat()-0.5f)*8,
+                (float)Math.cos(a)*spd, (float)Math.sin(a)*spd-2,
+                25+rng.nextInt(20),
+                new Color(150+rng.nextInt(105),100+rng.nextInt(100),200+rng.nextInt(55))));
         }
     }
 
@@ -784,32 +743,32 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         for(int i = 0; i < 28; i++) {
             float a = (float)(rng.nextDouble() * Math.PI * 2);
             float s = 1 + rng.nextFloat() * 5;
-            particles.add(new Particle(px + playerW / 2f, py + playerH / 2f,
-                (float)Math.cos(a) * s, (float)Math.sin(a) * s,
-                25 + rng.nextInt(20), new Color(100 + rng.nextInt(80), 0, rng.nextInt(80))));
+            particles.add(new Particle(px+playerW/2f, py+playerH/2f,
+                (float)Math.cos(a)*s, (float)Math.sin(a)*s,
+                25+rng.nextInt(20), new Color(100+rng.nextInt(80),0,rng.nextInt(80))));
         }
     }
     void spawnWinBurst() {
         for(int i = 0; i < 40; i++) {
             float a = (float)(rng.nextDouble() * Math.PI * 2);
             float s = 2 + rng.nextFloat() * 5;
-            particles.add(new Particle(goalX + GOAL_W / 2f, goalY,
-                (float)Math.cos(a) * s, (float)Math.sin(a) * s,
-                30 + rng.nextInt(20), new Color(rng.nextInt(255), rng.nextInt(255), rng.nextInt(100))));
+            particles.add(new Particle(goalX+GOAL_W/2f, goalY,
+                (float)Math.cos(a)*s, (float)Math.sin(a)*s,
+                30+rng.nextInt(20), new Color(rng.nextInt(255),rng.nextInt(255),rng.nextInt(100))));
         }
     }
     void spawnDust() {
         for(int i = 0; i < 5; i++)
-            particles.add(new Particle(px + playerW / 2f, py + playerH,
-                (rng.nextFloat() - 0.5f) * 3, -rng.nextFloat() * 2,
-                12, new Color(200, 200, 200, 180)));
+            particles.add(new Particle(px+playerW/2f, py+playerH,
+                (rng.nextFloat()-0.5f)*3, -rng.nextFloat()*2,
+                12, new Color(200,200,200,180)));
     }
     void spawnBounceParticles(int x, int y) {
         for(int i = 0; i < 10; i++) {
             float a = (float)(rng.nextDouble() * Math.PI);
-            particles.add(new Particle(x + playerW / 2f, y + playerH,
-                (float)Math.cos(a) * 4, (float)Math.sin(a) * -3,
-                15, new Color(100, 200, 255)));
+            particles.add(new Particle(x+playerW/2f, y+playerH,
+                (float)Math.cos(a)*4, (float)Math.sin(a)*-3,
+                15, new Color(100,200,255)));
         }
     }
 
@@ -834,220 +793,181 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── DEATH ANIMATION RENDER ────────────────────────────────
     void drawDeathAnim(Graphics2D g) {
-        // Draw the game world with shake
         AffineTransform old = g.getTransform();
         g.translate(screenShakeX, screenShakeY);
         drawGame(g);
         g.setTransform(old);
-
-        // Flash overlay on impact
         if(deathAnimTimer < 8) {
             float flashAlpha = 1f - deathAnimTimer / 8f;
-            g.setColor(new Color(255, 200, 50, (int)(flashAlpha * 200)));
-            g.fillRect(0, 0, W, H);
+            g.setColor(new Color(255,200,50,(int)(flashAlpha*200)));
+            g.fillRect(0,0,W,H);
         }
-
-        // Draw body parts (world-space, offset by camera)
         for(BodyPart bp : bodyParts) {
             float lifeRatio = (float)bp.life / (DEATH_ANIM_TICKS + 10);
             int alpha = (int)(Math.min(1f, lifeRatio * 2f) * 255);
             if(alpha <= 0) continue;
-
             int bx = (int)(bp.x - camX + screenShakeX);
             int by = (int)(bp.y);
-
             AffineTransform at = g.getTransform();
             g.rotate(bp.rot, bx, by);
-
             Color c = new Color(bp.color.getRed(), bp.color.getGreen(), bp.color.getBlue(), alpha);
             g.setColor(c);
-
             switch(bp.type) {
-                case 0 -> { // Head/dot — glowing orb
-                    g.setColor(new Color(180, 130, 255, alpha / 3));
-                    g.fillOval(bx - 8, by - 8, 20, 20);
-                    g.setColor(new Color(230, 200, 255, alpha));
-                    g.fillOval(bx - 4, by - 4, 12, 12);
-                    g.setColor(new Color(255, 255, 255, alpha));
-                    g.fillOval(bx - 1, by - 1, 5, 5);
+                case 0 -> {
+                    g.setColor(new Color(180,130,255,alpha/3));
+                    g.fillOval(bx-8,by-8,20,20);
+                    g.setColor(new Color(230,200,255,alpha));
+                    g.fillOval(bx-4,by-4,12,12);
+                    g.setColor(new Color(255,255,255,alpha));
+                    g.fillOval(bx-1,by-1,5,5);
                 }
-                case 1 -> { // Body segment — rectangle chunk
-                    g.setColor(new Color(210, 210, 250, alpha));
-                    g.fillRect(bx - 4, by - 5, 8, 10);
-                    g.setColor(new Color(150, 150, 200, alpha / 2));
-                    g.fillRect(bx, by - 5, 2, 10);
+                case 1 -> {
+                    g.setColor(new Color(210,210,250,alpha));
+                    g.fillRect(bx-4,by-5,8,10);
+                    g.setColor(new Color(150,150,200,alpha/2));
+                    g.fillRect(bx,by-5,2,10);
                 }
-                case 2 -> { // Leg
-                    g.setColor(new Color(60, 60, 110, alpha));
-                    g.fillRect(bx - 2, by - 6, 5, 10);
+                case 2 -> {
+                    g.setColor(new Color(60,60,110,alpha));
+                    g.fillRect(bx-2,by-6,5,10);
                 }
-                case 3 -> { // Arm
-                    g.setColor(new Color(180, 180, 230, alpha));
-                    g.fillRect(bx - 5, by - 2, 10, 3);
+                case 3 -> {
+                    g.setColor(new Color(180,180,230,alpha));
+                    g.fillRect(bx-5,by-2,10,3);
                 }
             }
             g.setTransform(at);
         }
-
-        // Draw particles
         for(Particle p : particles) {
             float alpha = (float)p.life / p.maxLife;
             int a = (int)(alpha * 255);
             if(a <= 0) continue;
-            g.setColor(new Color(p.color.getRed(), p.color.getGreen(), p.color.getBlue(), a));
+            g.setColor(new Color(p.color.getRed(),p.color.getGreen(),p.color.getBlue(),a));
             int px2 = (int)(p.x - camX + screenShakeX);
             int py2 = (int)(p.y);
             int sz = (int)(4 * alpha) + 2;
-            g.fillOval(px2 - sz/2, py2 - sz/2, sz, sz);
+            g.fillOval(px2-sz/2, py2-sz/2, sz, sz);
         }
-
-        // Vignette darkening edges as animation progresses
         if(deathAnimTimer > 25) {
             float v = (deathAnimTimer - 25f) / (DEATH_ANIM_TICKS - 25f);
-            g.setColor(new Color(0, 0, 0, (int)(v * 100)));
-            g.fillRect(0, 0, W, H);
+            g.setColor(new Color(0,0,0,(int)(v*100)));
+            g.fillRect(0,0,W,H);
         }
     }
 
     // ── MENU ──────────────────────────────────────────────────
     void drawMenu(Graphics2D g) {
         float t = tick * 0.01f;
-        Color c1 = new Color((int)(20 + 10 * Math.sin(t)), (int)(5 + 5 * Math.sin(t + 1)), (int)(40 + 10 * Math.sin(t + 2)));
-        Color c2 = new Color((int)(50 + 20 * Math.sin(t + 3)), (int)(10 + 10 * Math.sin(t + 4)), (int)(80 + 20 * Math.sin(t + 5)));
-        g.setPaint(new GradientPaint(0, 0, c1, W, H, c2));
-        g.fillRect(0, 0, W, H);
-
+        Color c1 = new Color((int)(20+10*Math.sin(t)),(int)(5+5*Math.sin(t+1)),(int)(40+10*Math.sin(t+2)));
+        Color c2 = new Color((int)(50+20*Math.sin(t+3)),(int)(10+10*Math.sin(t+4)),(int)(80+20*Math.sin(t+5)));
+        g.setPaint(new GradientPaint(0,0,c1,W,H,c2));
+        g.fillRect(0,0,W,H);
         g.setFont(new Font("Courier New", Font.BOLD, 54));
         String title = "i   LOST";
-        drawShadowText(g, title, W / 2 - g.getFontMetrics().stringWidth(title) / 2, 130,
-            new Color(255, 80, 80), new Color(120, 0, 0));
-
+        drawShadowText(g, title, W/2-g.getFontMetrics().stringWidth(title)/2, 130,
+            new Color(255,80,80), new Color(120,0,0));
         g.setFont(new Font("Courier New", Font.PLAIN, 15));
-        g.setColor(new Color(200, 200, 220));
+        g.setColor(new Color(200,200,220));
         String sub = "A normal platformer. Keep calm and keep on going!";
-        g.drawString(sub, W / 2 - g.getFontMetrics().stringWidth(sub) / 2, 168);
-
-        drawPlayerChar(g, W / 2 - 7, 195, true, (tick / 8) % 4);
-
+        g.drawString(sub, W/2-g.getFontMetrics().stringWidth(sub)/2, 168);
+        drawPlayerChar(g, W/2-7, 195, true, (tick/8)%4);
         for(int i = 0; i < MENU_OPTIONS.length; i++) {
             boolean sel = (menuSel == i);
             g.setFont(new Font("Courier New", Font.BOLD, sel ? 26 : 22));
-            Color col = sel ? new Color(255, 200, 80) : new Color(160, 160, 200);
-            if(sel) { g.setColor(new Color(255, 200, 80, 40)); g.fillRoundRect(W / 2 - 130, 283 + i * 55 - 28, 260, 36, 8, 8); }
+            Color col = sel ? new Color(255,200,80) : new Color(160,160,200);
+            if(sel) { g.setColor(new Color(255,200,80,40)); g.fillRoundRect(W/2-130,283+i*55-28,260,36,8,8); }
             g.setColor(col);
-            g.drawString(MENU_OPTIONS[i], W / 2 - g.getFontMetrics().stringWidth(MENU_OPTIONS[i]) / 2, 283 + i * 55);
+            g.drawString(MENU_OPTIONS[i], W/2-g.getFontMetrics().stringWidth(MENU_OPTIONS[i])/2, 283+i*55);
         }
-
         g.setFont(new Font("Courier New", Font.PLAIN, 12));
-        g.setColor(new Color(150, 150, 170));
-        g.drawString("A/D: Move   SPACE: Jump   ↑↓: Select   ENTER: Confirm", W / 2 - 230, H - 30);
-
-        g.setFont(new Font("Courier New", Font.PLAIN, 12));
+        g.setColor(new Color(150,150,170));
+        g.drawString("A/D: Move   SPACE: Jump   ↑↓: Select   ENTER: Confirm", W/2-230, H-30);
         String[] legend = {
             "Red when stepped on = Fake  |  Cyan ↑↑ = Bouncy",
             "Faint shimmer = Invisible  |  Red trails = Chasing spike",
         };
         for(int i = 0; i < legend.length; i++) {
-            g.setColor(new Color(180, 150, 200));
-            g.drawString(legend[i], W / 2 - g.getFontMetrics().stringWidth(legend[i]) / 2, 450 + i * 18);
+            g.setColor(new Color(180,150,200));
+            g.drawString(legend[i], W/2-g.getFontMetrics().stringWidth(legend[i])/2, 450+i*18);
         }
     }
 
     // ── LEVEL SELECT SCREEN ───────────────────────────────────
     void drawLevelSelect(Graphics2D g) {
         float t = tick * 0.01f;
-        Color c1 = new Color((int)(15 + 8 * Math.sin(t)), (int)(20 + 10 * Math.sin(t + 1)), (int)(35 + 12 * Math.sin(t + 2)));
-        Color c2 = new Color((int)(40 + 15 * Math.sin(t + 3)), (int)(30 + 12 * Math.sin(t + 4)), (int)(70 + 18 * Math.sin(t + 5)));
-        g.setPaint(new GradientPaint(0, 0, c1, W, H, c2));
-        g.fillRect(0, 0, W, H);
-
+        Color c1 = new Color((int)(15+8*Math.sin(t)),(int)(20+10*Math.sin(t+1)),(int)(35+12*Math.sin(t+2)));
+        Color c2 = new Color((int)(40+15*Math.sin(t+3)),(int)(30+12*Math.sin(t+4)),(int)(70+18*Math.sin(t+5)));
+        g.setPaint(new GradientPaint(0,0,c1,W,H,c2));
+        g.fillRect(0,0,W,H);
         g.setFont(new Font("Courier New", Font.BOLD, 36));
         String title = "SELECT LEVEL";
-        drawShadowText(g, title, W / 2 - g.getFontMetrics().stringWidth(title) / 2, 70,
-            new Color(100, 200, 255), new Color(30, 80, 120));
-
-        int cardW = 140, cardH = 160, spacing = 20;
-        int totalW = 5 * cardW + 4 * spacing;
-        int startX = W / 2 - totalW / 2;
+        drawShadowText(g, title, W/2-g.getFontMetrics().stringWidth(title)/2, 70,
+            new Color(100,200,255), new Color(30,80,120));
+        int cardW=140, cardH=160, spacing=20;
+        int totalW = 5*cardW + 4*spacing;
+        int startX = W/2 - totalW/2;
         int cardY = 120;
-
         for(int i = 0; i < 5; i++) {
-            int cx = startX + i * (cardW + spacing);
+            int cx = startX + i*(cardW+spacing);
             boolean selected = (levelSelectSel == i);
             boolean unlocked = (i <= highestUnlockedLevel);
-
-            g.setColor(new Color(0, 0, 0, 80));
-            g.fillRoundRect(cx + 4, cardY + 4, cardW, cardH, 12, 12);
-
-            if(unlocked) {
-                g.setColor(selected ? new Color(40, 60, 100, 240) : new Color(25, 35, 60, 220));
-            } else {
-                g.setColor(new Color(30, 30, 40, 200));
-            }
-            g.fillRoundRect(cx, cardY, cardW, cardH, 12, 12);
-
-            if(selected && unlocked) { g.setColor(new Color(255, 200, 80, 200)); g.setStroke(new BasicStroke(3f)); }
-            else if(unlocked) { g.setColor(new Color(100, 140, 200, 150)); g.setStroke(new BasicStroke(1.5f)); }
-            else { g.setColor(new Color(60, 60, 80, 150)); g.setStroke(new BasicStroke(1.5f)); }
-            g.drawRoundRect(cx, cardY, cardW, cardH, 12, 12);
+            g.setColor(new Color(0,0,0,80));
+            g.fillRoundRect(cx+4,cardY+4,cardW,cardH,12,12);
+            if(unlocked) g.setColor(selected ? new Color(40,60,100,240) : new Color(25,35,60,220));
+            else g.setColor(new Color(30,30,40,200));
+            g.fillRoundRect(cx,cardY,cardW,cardH,12,12);
+            if(selected && unlocked) { g.setColor(new Color(255,200,80,200)); g.setStroke(new BasicStroke(3f)); }
+            else if(unlocked) { g.setColor(new Color(100,140,200,150)); g.setStroke(new BasicStroke(1.5f)); }
+            else { g.setColor(new Color(60,60,80,150)); g.setStroke(new BasicStroke(1.5f)); }
+            g.drawRoundRect(cx,cardY,cardW,cardH,12,12);
             g.setStroke(new BasicStroke(1f));
-
             g.setFont(new Font("Courier New", Font.BOLD, 48));
-            String num = String.valueOf(i + 1);
+            String num = String.valueOf(i+1);
             int numW = g.getFontMetrics().stringWidth(num);
-            g.setColor(unlocked ? (selected ? new Color(255, 220, 100) : new Color(180, 200, 255)) : new Color(80, 80, 100));
-            g.drawString(num, cx + cardW / 2 - numW / 2, cardY + 60);
-
+            g.setColor(unlocked ? (selected ? new Color(255,220,100) : new Color(180,200,255)) : new Color(80,80,100));
+            g.drawString(num, cx+cardW/2-numW/2, cardY+60);
             g.setFont(new Font("Courier New", Font.BOLD, 11));
             String name = LEVEL_NAMES[i];
             int nameW = g.getFontMetrics().stringWidth(name);
-            g.setColor(unlocked ? (selected ? new Color(255, 240, 200) : new Color(160, 180, 220)) : new Color(70, 70, 90));
-            g.drawString(name, cx + cardW / 2 - nameW / 2, cardY + 85);
-
+            g.setColor(unlocked ? (selected ? new Color(255,240,200) : new Color(160,180,220)) : new Color(70,70,90));
+            g.drawString(name, cx+cardW/2-nameW/2, cardY+85);
             if(!unlocked) {
                 g.setFont(new Font("Courier New", Font.BOLD, 28));
-                g.setColor(new Color(100, 80, 120));
+                g.setColor(new Color(100,80,120));
                 String lock = "🔒";
-                int lockW = g.getFontMetrics().stringWidth(lock);
-                g.drawString(lock, cx + cardW / 2 - lockW / 2, cardY + 125);
+                g.drawString(lock, cx+cardW/2-g.getFontMetrics().stringWidth(lock)/2, cardY+125);
             } else {
                 g.setFont(new Font("Courier New", Font.PLAIN, 10));
-                g.setColor(new Color(140, 140, 180));
+                g.setColor(new Color(140,140,180));
                 String diff = getDifficultyLabel(i);
-                int diffW = g.getFontMetrics().stringWidth(diff);
-                g.drawString(diff, cx + cardW / 2 - diffW / 2, cardY + 105);
-                if(i < highestUnlockedLevel || (i == 4 && highestUnlockedLevel >= 4)) {
-                    g.setColor(new Color(100, 255, 150));
+                g.drawString(diff, cx+cardW/2-g.getFontMetrics().stringWidth(diff)/2, cardY+105);
+                if(i < highestUnlockedLevel || (i==4 && highestUnlockedLevel>=4)) {
+                    g.setColor(new Color(100,255,150));
                     g.setFont(new Font("Courier New", Font.BOLD, 16));
                     String check = "✓";
-                    int checkW = g.getFontMetrics().stringWidth(check);
-                    g.drawString(check, cx + cardW / 2 - checkW / 2, cardY + 140);
+                    g.drawString(check, cx+cardW/2-g.getFontMetrics().stringWidth(check)/2, cardY+140);
                 }
             }
             if(selected && unlocked) {
-                g.setColor(new Color(255, 200, 80, (int)(100 + 50 * Math.sin(tick * 0.1))));
-                g.fillRoundRect(cx - 2, cardY - 2, cardW + 4, 4, 2, 2);
+                g.setColor(new Color(255,200,80,(int)(100+50*Math.sin(tick*0.1))));
+                g.fillRoundRect(cx-2,cardY-2,cardW+4,4,2,2);
             }
         }
-
         g.setFont(new Font("Courier New", Font.PLAIN, 13));
-        g.setColor(new Color(180, 180, 210));
+        g.setColor(new Color(180,180,210));
         String inst = "← →  Select Level   |   ENTER / SPACE  Start   |   ESC  Back";
-        g.drawString(inst, W / 2 - g.getFontMetrics().stringWidth(inst) / 2, cardY + cardH + 50);
-
+        g.drawString(inst, W/2-g.getFontMetrics().stringWidth(inst)/2, cardY+cardH+50);
         if(levelSelectSel > highestUnlockedLevel) {
             g.setFont(new Font("Courier New", Font.ITALIC, 12));
-            g.setColor(new Color(255, 150, 100));
+            g.setColor(new Color(255,150,100));
             String lockHint = "Complete previous levels to unlock!";
-            g.drawString(lockHint, W / 2 - g.getFontMetrics().stringWidth(lockHint) / 2, cardY + cardH + 75);
+            g.drawString(lockHint, W/2-g.getFontMetrics().stringWidth(lockHint)/2, cardY+cardH+75);
         }
-
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
-        g.setColor(new Color(140, 160, 200));
-        String progress = "Progress: " + (highestUnlockedLevel + 1) + "/5 levels unlocked";
-        g.drawString(progress, W / 2 - g.getFontMetrics().stringWidth(progress) / 2, H - 40);
+        g.setColor(new Color(140,160,200));
+        String progress = "Progress: " + (highestUnlockedLevel+1) + "/5 levels unlocked";
+        g.drawString(progress, W/2-g.getFontMetrics().stringWidth(progress)/2, H-40);
     }
 
     String getDifficultyLabel(int level) {
@@ -1061,20 +981,176 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         };
     }
 
-    // ── GAME ──────────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════
+    //  GAME — NIGHTTIME PARALLAX BACKGROUND + GAMEPLAY
+    // ══════════════════════════════════════════════════════════
     void drawGame(Graphics2D g) {
         int cx = (int)camX;
 
-        g.setPaint(new GradientPaint(0, 0, new Color(15, 5, 30), 0, H, new Color(35, 15, 60)));
+        // ── 1. Sky gradient — deep indigo to midnight blue ──────
+        g.setPaint(new GradientPaint(0, 0, new Color(8, 8, 35), 0, H, new Color(20, 18, 55)));
         g.fillRect(0, 0, W, H);
 
-        // Parallax stars
-        g.setColor(new Color(200, 200, 220, 140));
-        for(int i = 0; i < 80; i++) {
-            int sx = ((i * 97 + i * 43) % levelW - cx / 2 + levelW * 2) % W;
-            int sy = (i * 53 + i * 11) % (H / 2);
-            g.fillRect(sx, sy, i % 7 == 0 ? 2 : 1, i % 7 == 0 ? 2 : 1);
+        // ── 2. Moon (fixed in screen-space, top-right) ──────────
+        int moonX = W - 130, moonY = 45;
+        // Layered halo glow
+        for (int gi = 4; gi >= 1; gi--) {
+            int gr = gi * 14;
+            int ga = 10 + gi * 5;
+            g.setColor(new Color(220, 230, 160, ga));
+            g.fillOval(moonX - gr, moonY - gr, 60 + gr * 2, 60 + gr * 2);
         }
+        // Moon body
+        g.setColor(new Color(255, 248, 195));
+        g.fillOval(moonX, moonY, 60, 60);
+        // Craters
+        g.setColor(new Color(230, 218, 155, 160));
+        g.fillOval(moonX + 12, moonY + 10, 14, 12);
+        g.fillOval(moonX + 30, moonY + 28, 10,  9);
+        g.fillOval(moonX +  8, moonY + 32,  8,  7);
+        // Bright rim highlight arc
+        g.setColor(new Color(255, 255, 220, 90));
+        g.setStroke(new BasicStroke(2.5f));
+        g.drawArc(moonX + 4, moonY + 4, 52, 52, 40, 120);
+        g.setStroke(new BasicStroke(1f));
+
+        // ── 3. Stars — two parallax layers ──────────────────────
+        // Far stars (scroll at 5% camera speed)
+        for (int i = 0; i < 90; i++) {
+            int sx = (((i * 137 + i * 29) % 4000) - (int)(cx * 0.05f) % 4000 + 8000) % W;
+            int sy = (i * 61 + (i % 7) * 13) % (H - 120);
+            boolean twinkle = ((i + tick / 12) % 5 == 0);
+            int starAlpha = twinkle ? 255 : (120 + (i % 3) * 30);
+            int starSize  = (i % 11 == 0) ? 2 : 1;
+            g.setColor(new Color(220, 225, 255, starAlpha));
+            g.fillRect(sx, sy, starSize, starSize);
+            // Occasional cross sparkle on prominent stars
+            if (i % 17 == 0) {
+                g.setColor(new Color(220, 225, 255, 55));
+                g.drawLine(sx - 3, sy, sx + 3, sy);
+                g.drawLine(sx, sy - 3, sx, sy + 3);
+            }
+        }
+        // Near stars (scroll at 12% camera speed)
+        for (int i = 0; i < 40; i++) {
+            int sx = (((i * 211 + 500) % 4200) - (int)(cx * 0.12f) % 4200 + 8400) % W;
+            int sy = (i * 83 + 20) % (H / 2 - 30);
+            g.setColor(new Color(255, 240, 210, 160 + (i % 4) * 20));
+            g.fillRect(sx, sy, 1, 1);
+        }
+
+        // ── 4. Distant city silhouette (scroll 20%) ─────────────
+        {
+            int off1 = (int)(cx * 0.20f);
+            int[] buildingHeights = {70, 110, 80, 130, 60, 100, 90, 75, 120, 95, 65, 140, 85, 70, 105};
+            int bw = 68;
+            int totalBuildings = 22;
+            int repeatW = bw * totalBuildings;
+            for (int i = 0; i < totalBuildings; i++) {
+                int bh  = buildingHeights[i % buildingHeights.length];
+                int bx2 = ((i * bw) - (off1 % repeatW) + repeatW * 2) % repeatW;
+                // tile across screen
+                for (int tile = 0; tile <= W / repeatW + 1; tile++) {
+                    int drawX = bx2 + tile * repeatW - repeatW;
+                    if (drawX + bw < 0 || drawX > W) continue;
+                    int by2 = H - 80 - bh;
+                    g.setColor(new Color(14, 12, 30));
+                    g.fillRect(drawX, by2, bw - 2, bh + 80);
+                    // Windows — deterministic warm/cool
+                    for (int wy = by2 + 6; wy < H - 90; wy += 10) {
+                        for (int wx2 = drawX + 5; wx2 < drawX + bw - 8; wx2 += 10) {
+                            int seed = (i * 1000 + (wy - by2) * 50 + (wx2 - drawX));
+                            boolean lit  = ((long)(seed * 2654435769L) & 0xFFFFL) > 40000L;
+                            boolean warm = ((long)(seed * 1234567891L) & 0xFFFFL) > 32768L;
+                            if (lit) {
+                                g.setColor(warm ? new Color(255, 230, 100, 130) : new Color(160, 210, 255, 110));
+                                g.fillRect(wx2, wy, 5, 4);
+                            }
+                        }
+                    }
+                    // Rooftop antenna every 3rd building
+                    if (i % 3 == 0) {
+                        g.setColor(new Color(20, 15, 40));
+                        g.fillRect(drawX + bw / 2 - 1, by2 - 16, 2, 16);
+                        // Blinking red beacon
+                        if ((tick / 30 + i) % 2 == 0) {
+                            g.setColor(new Color(255, 60, 60, 200));
+                            g.fillOval(drawX + bw / 2 - 3, by2 - 20, 6, 6);
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── 5. Mid city silhouette (scroll 40%) ─────────────────
+        {
+            int off2 = (int)(cx * 0.40f);
+            int[] midHeights = {55, 90, 45, 75, 100, 60, 80, 50, 95, 70, 85, 40, 110, 65};
+            int mw = 52;
+            int totalMid = 28;
+            int repeatW2 = mw * totalMid;
+            for (int i = 0; i < totalMid; i++) {
+                int bh  = midHeights[i % midHeights.length];
+                int bx2 = ((i * mw) - (off2 % repeatW2) + repeatW2 * 2) % repeatW2;
+                for (int tile = 0; tile <= W / repeatW2 + 1; tile++) {
+                    int drawX = bx2 + tile * repeatW2 - repeatW2;
+                    if (drawX + mw < 0 || drawX > W) continue;
+                    int by2 = H - 65 - bh;
+                    g.setColor(new Color(18, 15, 40));
+                    g.fillRect(drawX, by2, mw - 3, bh + 65);
+                    // Windows — denser, slightly brighter (closer layer)
+                    for (int wy = by2 + 5; wy < H - 75; wy += 9) {
+                        for (int wx2 = drawX + 4; wx2 < drawX + mw - 5; wx2 += 9) {
+                            int seed = (i * 777 + (wy - by2) * 31 + (wx2 - drawX));
+                            boolean lit  = ((long)(seed * 2654435769L) & 0xFFFFL) > 36000L;
+                            boolean warm = ((long)(seed * 987654321L)  & 0xFFFFL) > 32768L;
+                            if (lit) {
+                                g.setColor(warm ? new Color(255, 210, 90, 160) : new Color(130, 190, 255, 140));
+                                g.fillRect(wx2, wy, 4, 3);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── 6. Tree line silhouette (scroll 30%) ────────────────
+        {
+            int off3 = (int)(cx * 0.30f);
+            g.setColor(new Color(12, 10, 28));
+            int totalTrees = 55;
+            int treeRepeat = 53 * totalTrees;
+            for (int i = 0; i < totalTrees; i++) {
+                int tx = ((i * 53 + i * 17) - (off3 % treeRepeat) + treeRepeat * 2) % treeRepeat;
+                for (int tile = 0; tile <= W / treeRepeat + 1; tile++) {
+                    int drawX = tx + tile * treeRepeat - treeRepeat;
+                    if (drawX < -30 || drawX > W + 30) continue;
+                    int th = 30 + (i * 19 % 25);
+                    int tw = 18 + (i * 11 % 14);
+                    g.fillOval(drawX - tw / 2, H - 68 - th, tw, th);
+                    g.fillRect(drawX - 2, H - 68, 4, 10);
+                }
+            }
+        }
+
+        // ── 7. Ground strip with fog glow ───────────────────────
+        g.setPaint(new GradientPaint(0, H - 55, new Color(12, 8, 25), 0, H, new Color(6, 4, 15)));
+        g.fillRect(0, H - 55, W, 55);
+        // Subtle ground fog layers
+        for (int fi = 0; fi < 3; fi++) {
+            g.setColor(new Color(60, 40, 120, 10 - fi * 3));
+            g.fillRect(0, H - 60 - fi * 8, W, 12);
+        }
+
+        // ── 8. Moon ambient bloom ────────────────────────────────
+        float[] bloomFractions = {0f, 1f};
+        Color[] bloomColors = {new Color(80, 90, 40, 18), new Color(0, 0, 0, 0)};
+        g.setPaint(new RadialGradientPaint(moonX + 30, moonY + 30, 160, bloomFractions, bloomColors));
+        g.fillRect(moonX - 130, moonY - 30, 320, 220);
+
+        // ════════════════════════════════════════════════════════
+        //  GAMEPLAY RENDERING (platforms, spikes, etc.)
+        // ════════════════════════════════════════════════════════
 
         if(currentLevel == 0) drawTutorialZoneMarkers(g, cx);
 
@@ -1084,16 +1160,15 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
             if(p.invisible) {
                 if(p.revealTimer_active) {
-                    // Revealed state — bright with edge glow
-                    g.setColor(new Color(180, 180, 255, 180));
+                    g.setColor(new Color(180,180,255,180));
                     g.fillRect(rx, p.y, p.w, p.h);
-                    g.setColor(new Color(220, 200, 255, 230));
+                    g.setColor(new Color(220,200,255,230));
                     g.fillRect(rx, p.y, p.w, 4);
                 } else {
                     float sparkle = (float)(0.3f + 0.15f * Math.sin(tick * 0.08f + p.x * 0.01f));
-                    g.setColor(new Color(160, 140, 255, (int)(sparkle * 80)));
+                    g.setColor(new Color(160,140,255,(int)(sparkle * 80)));
                     for(int sx2 = 0; sx2 < p.w; sx2 += 12) {
-                        if((sx2 / 12 + blinkTick / 8) % 3 == 0)
+                        if((sx2/12 + blinkTick/8) % 3 == 0)
                             g.fillOval(rx + sx2, p.y, 5, 5);
                     }
                 }
@@ -1102,13 +1177,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
             if(p.fake && p.fakeTriggered) {
                 float crumble = Math.min(1f, p.fakeTimer / 25f);
-                g.setColor(new Color((int)(40 + crumble * 180), (int)(25 * (1 - crumble)), 10));
+                g.setColor(new Color((int)(40 + crumble*180), (int)(25*(1-crumble)), 10));
                 g.fillRect(rx, p.y, p.w, p.h);
                 g.setColor(new Color(200, 50, 0));
                 for(int i = 0; i < 3; i++)
-                    g.drawLine(rx + i * p.w / 3, p.y, rx + i * p.w / 3 + 5, p.y + p.h);
+                    g.drawLine(rx + i*p.w/3, p.y, rx + i*p.w/3 + 5, p.y + p.h);
             } else if(p.fake) {
-                Color topCol = new Color(60 + currentLevel * 8, 100 - currentLevel * 4, 60 + currentLevel * 4);
+                Color topCol = new Color(60 + currentLevel*8, 100 - currentLevel*4, 60 + currentLevel*4);
                 g.setColor(new Color(50, 35, 15));
                 g.fillRect(rx, p.y + 7, p.w, p.h - 7);
                 g.setColor(topCol);
@@ -1116,26 +1191,22 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             } else if(p.bouncy) {
                 float bounce = 0.5f + 0.5f * (float)Math.sin(tick * 0.2f);
                 int b = (int)(50 + 80 * bounce);
-                // Bouncy platform — cyan gradient with animated glow
-                g.setColor(new Color(b, (int)(150 + 50 * bounce), (int)(200 + 50 * bounce)));
+                g.setColor(new Color(b, (int)(150 + 50*bounce), (int)(200 + 50*bounce)));
                 g.fillRect(rx, p.y, p.w, p.h);
                 g.setColor(new Color(150, 255, 255));
                 g.fillRect(rx, p.y, p.w, 4);
-                // Subtle inner glow
-                g.setColor(new Color(100, 220, 255, (int)(60 + 40 * bounce)));
+                g.setColor(new Color(100, 220, 255, (int)(60 + 40*bounce)));
                 g.fillRect(rx + 2, p.y + 4, p.w - 4, p.h - 6);
                 g.setColor(Color.WHITE);
                 g.setFont(new Font("Courier New", Font.BOLD, 9));
-                if(p.w > 40)
-                    g.drawString("↑↑↑", rx + p.w / 2 - 10, p.y - 2);
+                if(p.w > 40) g.drawString("↑↑↑", rx + p.w/2 - 10, p.y - 2);
             } else {
-                Color topCol = new Color(60 + currentLevel * 8, 100 - currentLevel * 4, 60 + currentLevel * 4);
+                Color topCol = new Color(60 + currentLevel*8, 100 - currentLevel*4, 60 + currentLevel*4);
                 g.setColor(new Color(50, 35, 15));
                 g.fillRect(rx, p.y + 7, p.w, p.h - 7);
                 g.setColor(topCol);
                 g.fillRect(rx, p.y, p.w, 7);
-                // Top highlight stripe
-                g.setColor(new Color(Math.min(255, 80 + currentLevel * 10), Math.min(255, 130 - currentLevel * 5), Math.min(255, 80 + currentLevel * 5), 120));
+                g.setColor(new Color(Math.min(255,80+currentLevel*10), Math.min(255,130-currentLevel*5), Math.min(255,80+currentLevel*5), 120));
                 g.fillRect(rx + 2, p.y, p.w - 4, 2);
             }
         }
@@ -1145,31 +1216,25 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             int sx = s.x - cx;
             if(sx < -30 || sx > W + 30) continue;
             if(s.chasing) {
-                // Chasing spike — animated red glow rings
                 float pulse = 0.5f + 0.5f * (float)Math.sin(tick * 0.15f);
-                g.setColor(new Color(255, 50, 0, (int)(40 + 30 * pulse)));
-                g.fillOval(sx - 12, s.y - 12, s.w + 24, s.h + 24);
-                g.setColor(new Color(255, 80, 0, (int)(50 + 30 * pulse)));
-                g.fillOval(sx - 6, s.y - 6, s.w + 12, s.h + 12);
-                // Trail
-                g.setColor(new Color(255, 50, 0, 35));
-                g.fillRect(sx - 20, s.y, 14, s.h);
-                // Spike itself
-                g.setColor(new Color(255, 100, 40));
+                g.setColor(new Color(255,50,0,(int)(40+30*pulse)));
+                g.fillOval(sx-12,s.y-12,s.w+24,s.h+24);
+                g.setColor(new Color(255,80,0,(int)(50+30*pulse)));
+                g.fillOval(sx-6,s.y-6,s.w+12,s.h+12);
+                g.setColor(new Color(255,50,0,35));
+                g.fillRect(sx-20,s.y,14,s.h);
+                g.setColor(new Color(255,100,40));
             } else {
-                // Normal spike — icy white/blue
-                g.setColor(new Color(210, 220, 255));
+                g.setColor(new Color(210,220,255));
             }
-            int[] xp = {sx, sx + s.w / 2, sx + s.w};
-            int[] yp = {s.y + s.h, s.y, s.y + s.h};
+            int[] xp = {sx, sx+s.w/2, sx+s.w};
+            int[] yp = {s.y+s.h, s.y, s.y+s.h};
             g.fillPolygon(xp, yp, 3);
-            // Edge highlight
-            g.setColor(s.chasing ? new Color(255, 160, 80) : new Color(180, 200, 255));
+            g.setColor(s.chasing ? new Color(255,160,80) : new Color(180,200,255));
             g.drawLine(xp[0], yp[0], xp[1], yp[1]);
-            // Inner shine
-            g.setColor(s.chasing ? new Color(255, 200, 150, 120) : new Color(240, 245, 255, 150));
-            g.fillPolygon(new int[]{sx + s.w/2 - 2, sx + s.w/2, sx + s.w/2 + 2},
-                        new int[]{s.y + s.h, s.y + 3, s.y + s.h}, 3);
+            g.setColor(s.chasing ? new Color(255,200,150,120) : new Color(240,245,255,150));
+            g.fillPolygon(new int[]{sx+s.w/2-2,sx+s.w/2,sx+s.w/2+2},
+                          new int[]{s.y+s.h, s.y+3, s.y+s.h}, 3);
         }
 
         for(Cannon c : cannons) {
@@ -1181,33 +1246,30 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         for(Cannonball cb : cannonballs) {
             int bx = (int)(cb.x - cx);
             if(bx < -20 || bx > W + 20) continue;
-            // Cannonball with motion trail
-            int trailLen = 3;
             float trailStep = cb.vx < 0 ? 7 : -7;
-            for(int ti = 1; ti <= trailLen; ti++) {
+            for(int ti = 1; ti <= 3; ti++) {
                 int tx = bx + (int)(trailStep * ti);
-                int ta = 60 - ti * 15;
-                g.setColor(new Color(200, 80, 0, ta));
-                g.fillOval(tx - 5, (int)cb.y - 5, 10, 10);
+                g.setColor(new Color(200,80,0,60-ti*15));
+                g.fillOval(tx-5,(int)cb.y-5,10,10);
             }
-            g.setColor(new Color(255, 120, 0, 70));
-            g.fillOval(bx - 10, (int)cb.y - 10, 20, 20);
-            g.setColor(new Color(40, 40, 50));
-            g.fillOval(bx - 6, (int)cb.y - 6, 12, 12);
-            g.setColor(new Color(120, 120, 140));
-            g.fillOval(bx - 3, (int)cb.y - 4, 5, 4);
+            g.setColor(new Color(255,120,0,70));
+            g.fillOval(bx-10,(int)cb.y-10,20,20);
+            g.setColor(new Color(40,40,50));
+            g.fillOval(bx-6,(int)cb.y-6,12,12);
+            g.setColor(new Color(120,120,140));
+            g.fillOval(bx-3,(int)cb.y-4,5,4);
         }
 
         drawGoal(g, goalX - cx, goalY);
 
         for(Particle p : particles) {
             float alpha = (float)p.life / p.maxLife;
-            g.setColor(new Color(p.color.getRed(), p.color.getGreen(), p.color.getBlue(), (int)(alpha * 255)));
-            g.fillOval((int)(p.x - cx) - 3, (int)p.y - 3, 6, 6);
+            g.setColor(new Color(p.color.getRed(),p.color.getGreen(),p.color.getBlue(),(int)(alpha*255)));
+            g.fillOval((int)(p.x-cx)-3,(int)p.y-3,6,6);
         }
 
         if(state == State.PLAYING || state == State.PAUSED)
-            drawPlayerChar(g, (int)(px - cx), (int)py, facingRight, onGround ? (tick / 6) % 4 : 1);
+            drawPlayerChar(g, (int)(px-cx), (int)py, facingRight, onGround ? (tick/6)%4 : 1);
 
         drawHUD(g);
 
@@ -1216,164 +1278,155 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
     // ── PAUSE MENU ────────────────────────────────────────────
     void drawPauseMenu(Graphics2D g) {
-        g.setColor(new Color(0, 0, 0, 170));
-        g.fillRect(0, 0, W, H);
-
+        g.setColor(new Color(0,0,0,170));
+        g.fillRect(0,0,W,H);
         if(pauseLevelSelect) { drawPauseLevelSelect(g); return; }
-
-        int pw = 420, ph = 340;
-        int panX = W / 2 - pw / 2, panY = H / 2 - ph / 2;
-
-        g.setColor(new Color(0, 0, 0, 100));
-        g.fillRoundRect(panX + 6, panY + 6, pw, ph, 20, 20);
-        g.setPaint(new GradientPaint(panX, panY, new Color(12, 8, 28, 245), panX, panY + ph, new Color(22, 12, 45, 245)));
-        g.fillRoundRect(panX, panY, pw, ph, 20, 20);
-        g.setColor(new Color(120, 80, 200, 200));
+        int pw=420, ph=340, panX=W/2-pw/2, panY=H/2-ph/2;
+        g.setColor(new Color(0,0,0,100));
+        g.fillRoundRect(panX+6,panY+6,pw,ph,20,20);
+        g.setPaint(new GradientPaint(panX,panY,new Color(12,8,28,245),panX,panY+ph,new Color(22,12,45,245)));
+        g.fillRoundRect(panX,panY,pw,ph,20,20);
+        g.setColor(new Color(120,80,200,200));
         g.setStroke(new BasicStroke(2f));
-        g.drawRoundRect(panX, panY, pw, ph, 20, 20);
+        g.drawRoundRect(panX,panY,pw,ph,20,20);
         g.setStroke(new BasicStroke(1f));
-        g.setColor(new Color(150, 80, 255, 200));
-        g.fillRoundRect(panX, panY + 12, 5, ph - 24, 4, 4);
+        g.setColor(new Color(150,80,255,200));
+        g.fillRoundRect(panX,panY+12,5,ph-24,4,4);
         g.setFont(new Font("Courier New", Font.BOLD, 28));
         String title = "II  PAUSED";
-        drawShadowText(g, title, W / 2 - g.getFontMetrics().stringWidth(title) / 2, panY + 44,
-            new Color(180, 130, 255), new Color(60, 20, 100));
-        g.setColor(new Color(120, 80, 200, 80));
-        g.fillRect(panX + 20, panY + 54, pw - 40, 1);
-
-        int optStartY = panY + 85, optSpacing = 44;
+        drawShadowText(g, title, W/2-g.getFontMetrics().stringWidth(title)/2, panY+44,
+            new Color(180,130,255), new Color(60,20,100));
+        g.setColor(new Color(120,80,200,80));
+        g.fillRect(panX+20,panY+54,pw-40,1);
+        int optStartY=panY+85, optSpacing=44;
         for(int i = 0; i < PAUSE_OPTIONS.length; i++) {
             boolean sel = (pauseSel == i);
-            int oy = optStartY + i * optSpacing;
+            int oy = optStartY + i*optSpacing;
             if(sel) {
-                g.setColor(new Color(120, 80, 200, 50));
-                g.fillRoundRect(panX + 14, oy - 22, pw - 28, 34, 8, 8);
-                g.setColor(new Color(150, 100, 255, 130));
+                g.setColor(new Color(120,80,200,50));
+                g.fillRoundRect(panX+14,oy-22,pw-28,34,8,8);
+                g.setColor(new Color(150,100,255,130));
                 g.setStroke(new BasicStroke(1.5f));
-                g.drawRoundRect(panX + 14, oy - 22, pw - 28, 34, 8, 8);
+                g.drawRoundRect(panX+14,oy-22,pw-28,34,8,8);
                 g.setStroke(new BasicStroke(1f));
-                g.setColor(new Color(255, 200, 80));
+                g.setColor(new Color(255,200,80));
                 g.setFont(new Font("Courier New", Font.BOLD, 14));
-                g.drawString("›", panX + 22, oy + 2);
+                g.drawString("›", panX+22, oy+2);
             }
             if(i == 3) {
                 g.setFont(new Font("Courier New", Font.BOLD, sel ? 18 : 16));
-                g.setColor(sel ? new Color(255, 200, 80) : new Color(160, 140, 200));
-                g.drawString(PAUSE_OPTIONS[i], panX + 40, oy + 2);
-                int barX = panX + 190, barY = oy - 10, barW = 180, barH = 10;
-                g.setColor(new Color(60, 40, 100));
-                g.fillRoundRect(barX, barY, barW, barH, 5, 5);
-                int fillW = (int)(barW * (volume / 100.0));
-                g.setColor(sel ? new Color(200, 140, 255) : new Color(120, 80, 180));
-                g.fillRoundRect(barX, barY, fillW, barH, 5, 5);
-                g.setColor(sel ? new Color(255, 220, 100) : new Color(200, 170, 255));
-                g.fillOval(barX + fillW - 7, barY - 3, 14, 14);
+                g.setColor(sel ? new Color(255,200,80) : new Color(160,140,200));
+                g.drawString(PAUSE_OPTIONS[i], panX+40, oy+2);
+                int barX=panX+190, barY=oy-10, barW=180, barH=10;
+                g.setColor(new Color(60,40,100));
+                g.fillRoundRect(barX,barY,barW,barH,5,5);
+                int fillW = (int)(barW*(volume/100.0));
+                g.setColor(sel ? new Color(200,140,255) : new Color(120,80,180));
+                g.fillRoundRect(barX,barY,fillW,barH,5,5);
+                g.setColor(sel ? new Color(255,220,100) : new Color(200,170,255));
+                g.fillOval(barX+fillW-7,barY-3,14,14);
                 g.setFont(new Font("Courier New", Font.PLAIN, 11));
-                g.setColor(new Color(200, 180, 230));
-                g.drawString(volume + "%", barX + barW + 6, barY + 9);
+                g.setColor(new Color(200,180,230));
+                g.drawString(volume+"%", barX+barW+6, barY+9);
                 if(sel) {
                     g.setFont(new Font("Courier New", Font.PLAIN, 10));
-                    g.setColor(new Color(180, 160, 220, 180));
-                    g.drawString("← / → to adjust", barX, barY + 24);
+                    g.setColor(new Color(180,160,220,180));
+                    g.drawString("← / → to adjust", barX, barY+24);
                 }
             } else {
                 g.setFont(new Font("Courier New", Font.BOLD, sel ? 18 : 16));
-                g.setColor(sel ? new Color(255, 200, 80) : new Color(160, 140, 200));
-                g.drawString(PAUSE_OPTIONS[i], panX + 40, oy + 2);
+                g.setColor(sel ? new Color(255,200,80) : new Color(160,140,200));
+                g.drawString(PAUSE_OPTIONS[i], panX+40, oy+2);
             }
         }
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
-        g.setColor(new Color(140, 120, 180, 180));
+        g.setColor(new Color(140,120,180,180));
         String hint = "↑ ↓ : Navigate   ENTER / SPACE : Select   ESC : Resume";
-        g.drawString(hint, W / 2 - g.getFontMetrics().stringWidth(hint) / 2, panY + ph - 12);
+        g.drawString(hint, W/2-g.getFontMetrics().stringWidth(hint)/2, panY+ph-12);
     }
 
-    // ── PAUSE LEVEL SELECT SUB-MENU ───────────────────────────
     void drawPauseLevelSelect(Graphics2D g) {
-        int pw = 500, ph = 280;
-        int panX = W / 2 - pw / 2, panY = H / 2 - ph / 2;
-        g.setColor(new Color(0, 0, 0, 100));
-        g.fillRoundRect(panX + 6, panY + 6, pw, ph, 20, 20);
-        g.setPaint(new GradientPaint(panX, panY, new Color(12, 18, 35, 245), panX, panY + ph, new Color(18, 28, 50, 245)));
-        g.fillRoundRect(panX, panY, pw, ph, 20, 20);
-        g.setColor(new Color(80, 150, 200, 200));
+        int pw=500, ph=280, panX=W/2-pw/2, panY=H/2-ph/2;
+        g.setColor(new Color(0,0,0,100));
+        g.fillRoundRect(panX+6,panY+6,pw,ph,20,20);
+        g.setPaint(new GradientPaint(panX,panY,new Color(12,18,35,245),panX,panY+ph,new Color(18,28,50,245)));
+        g.fillRoundRect(panX,panY,pw,ph,20,20);
+        g.setColor(new Color(80,150,200,200));
         g.setStroke(new BasicStroke(2f));
-        g.drawRoundRect(panX, panY, pw, ph, 20, 20);
+        g.drawRoundRect(panX,panY,pw,ph,20,20);
         g.setStroke(new BasicStroke(1f));
         g.setFont(new Font("Courier New", Font.BOLD, 22));
         String title = "⊞  SELECT LEVEL";
-        drawShadowText(g, title, W / 2 - g.getFontMetrics().stringWidth(title) / 2, panY + 36,
-            new Color(100, 200, 255), new Color(30, 80, 120));
-
-        int btnW = 80, btnH = 90, spacing = 12;
-        int totalBtnW = 5 * btnW + 4 * spacing;
-        int startX = panX + pw / 2 - totalBtnW / 2;
+        drawShadowText(g, title, W/2-g.getFontMetrics().stringWidth(title)/2, panY+36,
+            new Color(100,200,255), new Color(30,80,120));
+        int btnW=80, btnH=90, spacing=12;
+        int totalBtnW = 5*btnW + 4*spacing;
+        int startX = panX + pw/2 - totalBtnW/2;
         int btnY = panY + 60;
-
         for(int i = 0; i < 5; i++) {
-            int bx = startX + i * (btnW + spacing);
+            int bx = startX + i*(btnW+spacing);
             boolean selected = (pauseLevelSel == i);
             boolean unlocked = (i <= highestUnlockedLevel);
-            g.setColor(unlocked ? (selected ? new Color(50, 80, 130, 230) : new Color(30, 50, 80, 200)) : new Color(40, 40, 55, 180));
-            g.fillRoundRect(bx, btnY, btnW, btnH, 10, 10);
-            if(selected && unlocked) { g.setColor(new Color(255, 200, 80, 220)); g.setStroke(new BasicStroke(2.5f)); }
-            else if(unlocked) { g.setColor(new Color(100, 160, 220, 150)); g.setStroke(new BasicStroke(1.5f)); }
-            else { g.setColor(new Color(70, 70, 90, 150)); g.setStroke(new BasicStroke(1f)); }
-            g.drawRoundRect(bx, btnY, btnW, btnH, 10, 10);
+            g.setColor(unlocked ? (selected ? new Color(50,80,130,230) : new Color(30,50,80,200)) : new Color(40,40,55,180));
+            g.fillRoundRect(bx,btnY,btnW,btnH,10,10);
+            if(selected && unlocked) { g.setColor(new Color(255,200,80,220)); g.setStroke(new BasicStroke(2.5f)); }
+            else if(unlocked) { g.setColor(new Color(100,160,220,150)); g.setStroke(new BasicStroke(1.5f)); }
+            else { g.setColor(new Color(70,70,90,150)); g.setStroke(new BasicStroke(1f)); }
+            g.drawRoundRect(bx,btnY,btnW,btnH,10,10);
             g.setStroke(new BasicStroke(1f));
             g.setFont(new Font("Courier New", Font.BOLD, 32));
-            String num = String.valueOf(i + 1);
+            String num = String.valueOf(i+1);
             int numW = g.getFontMetrics().stringWidth(num);
-            g.setColor(unlocked ? (selected ? new Color(255, 220, 100) : new Color(180, 210, 255)) : new Color(90, 90, 110));
-            g.drawString(num, bx + btnW / 2 - numW / 2, btnY + 40);
+            g.setColor(unlocked ? (selected ? new Color(255,220,100) : new Color(180,210,255)) : new Color(90,90,110));
+            g.drawString(num, bx+btnW/2-numW/2, btnY+40);
             g.setFont(new Font("Courier New", Font.PLAIN, 9));
             String name = LEVEL_NAMES[i];
             int nameW = g.getFontMetrics().stringWidth(name);
-            g.setColor(unlocked ? (selected ? new Color(255, 240, 200) : new Color(150, 180, 220)) : new Color(80, 80, 100));
-            g.drawString(name, bx + btnW / 2 - nameW / 2, btnY + 58);
+            g.setColor(unlocked ? (selected ? new Color(255,240,200) : new Color(150,180,220)) : new Color(80,80,100));
+            g.drawString(name, bx+btnW/2-nameW/2, btnY+58);
             if(!unlocked) {
                 g.setFont(new Font("Courier New", Font.BOLD, 18));
-                g.setColor(new Color(100, 80, 120));
-                g.drawString("🔒", bx + btnW / 2 - 10, btnY + 80);
+                g.setColor(new Color(100,80,120));
+                g.drawString("🔒", bx+btnW/2-10, btnY+80);
             } else if(i < highestUnlockedLevel) {
                 g.setFont(new Font("Courier New", Font.BOLD, 14));
-                g.setColor(new Color(100, 255, 150));
-                g.drawString("✓", bx + btnW / 2 - 5, btnY + 78);
+                g.setColor(new Color(100,255,150));
+                g.drawString("✓", bx+btnW/2-5, btnY+78);
             }
             if(i == currentLevel && unlocked) {
                 g.setFont(new Font("Courier New", Font.PLAIN, 8));
-                g.setColor(new Color(255, 180, 80));
+                g.setColor(new Color(255,180,80));
                 String curr = "CURRENT";
                 int currW = g.getFontMetrics().stringWidth(curr);
-                g.drawString(curr, bx + btnW / 2 - currW / 2, btnY + btnH + 12);
+                g.drawString(curr, bx+btnW/2-currW/2, btnY+btnH+12);
             }
         }
         g.setFont(new Font("Courier New", Font.PLAIN, 12));
-        g.setColor(new Color(160, 180, 220));
+        g.setColor(new Color(160,180,220));
         String inst = "← →  Select   |   ENTER  Start   |   ESC  Back";
-        g.drawString(inst, W / 2 - g.getFontMetrics().stringWidth(inst) / 2, panY + ph - 40);
+        g.drawString(inst, W/2-g.getFontMetrics().stringWidth(inst)/2, panY+ph-40);
         if(pauseLevelSel > highestUnlockedLevel) {
             g.setFont(new Font("Courier New", Font.ITALIC, 11));
-            g.setColor(new Color(255, 150, 100));
+            g.setColor(new Color(255,150,100));
             String lockHint = "Complete previous levels to unlock!";
-            g.drawString(lockHint, W / 2 - g.getFontMetrics().stringWidth(lockHint) / 2, panY + ph - 18);
+            g.drawString(lockHint, W/2-g.getFontMetrics().stringWidth(lockHint)/2, panY+ph-18);
         }
     }
 
     void drawTutorialZoneMarkers(Graphics2D g, int cx) {
         String[][] zones = {
-            { "50", "ZONE 1: MOVEMENT" }, { "500", "ZONE 2: GAPS" },
-            { "1220", "ZONE 3: SPIKES" }, { "1600", "ZONE 4: FAKE PLATFORMS" },
-            { "1960", "ZONE 5: BOUNCY" }, { "2320", "ZONE 6: MOVING" },
-            { "2900", "ZONE 7: INVISIBLE" }, { "3180", "ZONE 8: CANNONS" },
+            {"50","ZONE 1: MOVEMENT"},{"500","ZONE 2: GAPS"},
+            {"1220","ZONE 3: SPIKES"},{"1600","ZONE 4: FAKE PLATFORMS"},
+            {"1960","ZONE 5: BOUNCY"},{"2320","ZONE 6: MOVING"},
+            {"2900","ZONE 7: INVISIBLE"},{"3180","ZONE 8: CANNONS"},
         };
         g.setFont(new Font("Courier New", Font.BOLD, 10));
         for(String[] z : zones) {
             int wx = Integer.parseInt(z[0]);
             int sx = wx - cx;
             if(sx < -100 || sx > W + 100) continue;
-            g.setColor(new Color(255, 255, 255, 22));
-            g.drawString(z[1], sx, H - 60);
+            g.setColor(new Color(255,255,255,22));
+            g.drawString(z[1], sx, H-60);
         }
     }
 
@@ -1384,294 +1437,215 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if(progress < 20) alpha = progress / 20f;
         else if(progress > total - 30) alpha = (total - progress) / 30f;
         alpha = Math.max(0, Math.min(1, alpha));
-
-        int cardW = 390, lineH = 22;
+        int cardW=390, lineH=22;
         int numLines = card.lines.length;
-        int cardH = 28 + 26 + numLines * lineH + 14;
-        int cardX = W / 2 - cardW / 2, cardY = 22;
-
-        g.setColor(new Color(0, 0, 0, (int)(alpha * 120)));
-        g.fillRoundRect(cardX + 4, cardY + 4, cardW, cardH, 14, 14);
-        g.setColor(new Color(8, 6, 20, (int)(alpha * 230)));
-        g.fillRoundRect(cardX, cardY, cardW, cardH, 14, 14);
-
+        int cardH = 28 + 26 + numLines*lineH + 14;
+        int cardX = W/2-cardW/2, cardY = 22;
+        g.setColor(new Color(0,0,0,(int)(alpha*120)));
+        g.fillRoundRect(cardX+4,cardY+4,cardW,cardH,14,14);
+        g.setColor(new Color(8,6,20,(int)(alpha*230)));
+        g.fillRoundRect(cardX,cardY,cardW,cardH,14,14);
         Color ac = card.accentColor;
-        g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha * 200)));
+        g.setColor(new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),(int)(alpha*200)));
         g.setStroke(new BasicStroke(2.2f));
-        g.drawRoundRect(cardX, cardY, cardW, cardH, 14, 14);
+        g.drawRoundRect(cardX,cardY,cardW,cardH,14,14);
         g.setStroke(new BasicStroke(1f));
-        g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha * 180)));
-        g.fillRoundRect(cardX, cardY, 6, cardH, 6, 6);
-        g.setColor(new Color(ac.getRed() / 5, ac.getGreen() / 5, ac.getBlue() / 5, (int)(alpha * 180)));
-        g.fillRoundRect(cardX + 1, cardY + 1, cardW - 2, 26, 12, 12);
+        g.setColor(new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),(int)(alpha*180)));
+        g.fillRoundRect(cardX,cardY,6,cardH,6,6);
+        g.setColor(new Color(ac.getRed()/5,ac.getGreen()/5,ac.getBlue()/5,(int)(alpha*180)));
+        g.fillRoundRect(cardX+1,cardY+1,cardW-2,26,12,12);
         g.setFont(new Font("Courier New", Font.BOLD, 14));
-        g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha * 255)));
-        g.drawString("▸  " + card.title, cardX + 18, cardY + 18);
-
+        g.setColor(new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),(int)(alpha*255)));
+        g.drawString("▸  " + card.title, cardX+18, cardY+18);
         int barW = cardW - 20;
         float pct = 1f - (float)progress / total;
-        g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha * 40)));
-        g.fillRoundRect(cardX + 10, cardY + 26, barW, 4, 2, 2);
-        g.setColor(new Color(ac.getRed(), ac.getGreen(), ac.getBlue(), (int)(alpha * 160)));
-        g.fillRoundRect(cardX + 10, cardY + 26, (int)(barW * pct), 4, 2, 2);
-
+        g.setColor(new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),(int)(alpha*40)));
+        g.fillRoundRect(cardX+10,cardY+26,barW,4,2,2);
+        g.setColor(new Color(ac.getRed(),ac.getGreen(),ac.getBlue(),(int)(alpha*160)));
+        g.fillRoundRect(cardX+10,cardY+26,(int)(barW*pct),4,2,2);
         g.setFont(new Font("Courier New", Font.PLAIN, 13));
         for(int i = 0; i < card.lines.length; i++) {
-            float lineAlpha = alpha * Math.min(1f, (progress - i * 8) / 15f);
+            float lineAlpha = alpha * Math.min(1f, (progress - i*8) / 15f);
             lineAlpha = Math.max(0, lineAlpha);
-            g.setColor(new Color(220, 220, 240, (int)(lineAlpha * 255)));
-            g.drawString(card.lines[i], cardX + 18, cardY + 50 + i * lineH);
+            g.setColor(new Color(220,220,240,(int)(lineAlpha*255)));
+            g.drawString(card.lines[i], cardX+18, cardY+50+i*lineH);
         }
     }
 
-    // ── IMPROVED PLAYER CHARACTER ─────────────────────────────
+    // ── PLAYER CHARACTER ──────────────────────────────────────
     void drawPlayerChar(Graphics2D g, int x, int y, boolean right, int frame) {
-        // Leg swing animation
         int legSwing = (frame % 2 == 0) ? 4 : -4;
         boolean moving = Math.abs(pvx) > 0.5f;
-
-        // Shadow
-        g.setColor(new Color(0, 0, 0, 50));
-        g.fillOval(x - 2, y + playerH + 1, playerW + 4, 5);
-
-        // ── Legs (more rounded) ──
+        g.setColor(new Color(0,0,0,50));
+        g.fillOval(x-2, y+playerH+1, playerW+4, 5);
         int leg1Off = moving ? legSwing : 0;
         int leg2Off = moving ? -legSwing : 0;
-        g.setColor(new Color(50, 50, 90));
-        // leg 1
-        g.fillRoundRect(x + 1, y + playerH - 10 + leg1Off / 2, 5, 10, 3, 3);
-        // shoe 1
-        g.setColor(new Color(80, 70, 130));
-        g.fillRoundRect(x - 1, y + playerH - 2 + leg1Off / 2, 8, 4, 2, 2);
-        // leg 2
-        g.setColor(new Color(50, 50, 90));
-        g.fillRoundRect(x + 8, y + playerH - 10 - leg2Off / 2, 5, 10, 3, 3);
-        // shoe 2
-        g.setColor(new Color(80, 70, 130));
-        g.fillRoundRect(x + 6, y + playerH - 2 - leg2Off / 2, 8, 4, 2, 2);
-
-        // ── Body ──
-        // Main body gradient effect (lighter top, darker bottom)
-        g.setColor(new Color(200, 205, 250));
-        g.fillRoundRect(x + 3, y + 11, 8, playerH - 21, 4, 4);
-        // Body highlight stripe
-        g.setColor(new Color(240, 240, 255, 160));
-        g.fillRoundRect(x + 4, y + 13, 3, playerH - 25, 2, 2);
-        // Body shadow
-        g.setColor(new Color(140, 140, 190, 180));
-        g.fillRoundRect(x + 8, y + 13, 2, playerH - 25, 1, 1);
-        // Belt/waist detail
-        g.setColor(new Color(100, 100, 180));
-        g.fillRect(x + 3, y + playerH - 18, 8, 2);
-
-        // ── Arms ──
-        int armSwing = moving ? legSwing / 2 : 0;
-        g.setColor(new Color(180, 185, 235));
+        g.setColor(new Color(50,50,90));
+        g.fillRoundRect(x+1, y+playerH-10+leg1Off/2, 5, 10, 3, 3);
+        g.setColor(new Color(80,70,130));
+        g.fillRoundRect(x-1, y+playerH-2+leg1Off/2, 8, 4, 2, 2);
+        g.setColor(new Color(50,50,90));
+        g.fillRoundRect(x+8, y+playerH-10-leg2Off/2, 5, 10, 3, 3);
+        g.setColor(new Color(80,70,130));
+        g.fillRoundRect(x+6, y+playerH-2-leg2Off/2, 8, 4, 2, 2);
+        g.setColor(new Color(200,205,250));
+        g.fillRoundRect(x+3, y+11, 8, playerH-21, 4, 4);
+        g.setColor(new Color(240,240,255,160));
+        g.fillRoundRect(x+4, y+13, 3, playerH-25, 2, 2);
+        g.setColor(new Color(140,140,190,180));
+        g.fillRoundRect(x+8, y+13, 2, playerH-25, 1, 1);
+        g.setColor(new Color(100,100,180));
+        g.fillRect(x+3, y+playerH-18, 8, 2);
+        int armSwing = moving ? legSwing/2 : 0;
+        g.setColor(new Color(180,185,235));
         if(right) {
-            // right-facing: left arm back, right arm forward
-            g.fillRoundRect(x - 4, y + 14 + armSwing, 5, 3, 2, 2);
-            g.fillRoundRect(x + playerW - 1, y + 14 - armSwing, 5, 3, 2, 2);
-            // hands
-            g.setColor(new Color(220, 215, 255));
-            g.fillOval(x - 5, y + 12 + armSwing, 5, 5);
-            g.fillOval(x + playerW, y + 12 - armSwing, 5, 5);
+            g.fillRoundRect(x-4, y+14+armSwing, 5, 3, 2, 2);
+            g.fillRoundRect(x+playerW-1, y+14-armSwing, 5, 3, 2, 2);
+            g.setColor(new Color(220,215,255));
+            g.fillOval(x-5, y+12+armSwing, 5, 5);
+            g.fillOval(x+playerW, y+12-armSwing, 5, 5);
         } else {
-            g.fillRoundRect(x - 4, y + 14 - armSwing, 5, 3, 2, 2);
-            g.fillRoundRect(x + playerW - 1, y + 14 + armSwing, 5, 3, 2, 2);
-            g.setColor(new Color(220, 215, 255));
-            g.fillOval(x - 5, y + 12 - armSwing, 5, 5);
-            g.fillOval(x + playerW, y + 12 + armSwing, 5, 5);
+            g.fillRoundRect(x-4, y+14-armSwing, 5, 3, 2, 2);
+            g.fillRoundRect(x+playerW-1, y+14+armSwing, 5, 3, 2, 2);
+            g.setColor(new Color(220,215,255));
+            g.fillOval(x-5, y+12-armSwing, 5, 5);
+            g.fillOval(x+playerW, y+12+armSwing, 5, 5);
         }
-
-        // ── Head/Dot — the "i" dot ──
         float bob = (float)Math.sin(dotBobTick * 0.09f) * 2.2f;
-        // Adjust bob when in air
         if(!onGround) bob = (float)Math.sin(dotBobTick * 0.05f) * 1.2f;
-        int dotX = x + 3, dotY = (int)(y - 3 + bob);
-
-        // Outer glow ring
-        g.setColor(new Color(180, 130, 255, 60));
-        g.fillOval(dotX - 5, dotY - 5, 18, 18);
-        // Glow halo
-        g.setColor(new Color(210, 170, 255, 90));
-        g.fillOval(dotX - 3, dotY - 3, 14, 14);
-        // Main dot body
-        g.setColor(new Color(235, 210, 255));
+        int dotX = x+3, dotY = (int)(y-3+bob);
+        g.setColor(new Color(180,130,255,60));
+        g.fillOval(dotX-5, dotY-5, 18, 18);
+        g.setColor(new Color(210,170,255,90));
+        g.fillOval(dotX-3, dotY-3, 14, 14);
+        g.setColor(new Color(235,210,255));
         g.fillOval(dotX, dotY, 8, 8);
-        // Highlight on dot
-        g.setColor(new Color(255, 255, 255, 200));
-        g.fillOval(dotX + 1, dotY + 1, 4, 3);
-        // Eye
-        g.setColor(new Color(40, 20, 70));
-        if(right) {
-            g.fillOval(dotX + 5, dotY + 3, 2, 2);
-        } else {
-            g.fillOval(dotX + 1, dotY + 3, 2, 2);
-        }
-        // Mouth expression — changes based on state
-        g.setColor(new Color(60, 30, 90));
-        if(Math.abs(pvy) > 8f) {
-            // Falling fast — worried "O" mouth
-            g.drawOval(dotX + 2, dotY + 5, 3, 3);
-        } else if(!onGround) {
-            // In air — slight smile
-            g.drawArc(dotX + 1, dotY + 3, 6, 4, 0, -180);
-        } else if(Math.abs(pvx) > 3f) {
-            // Running — determined flat mouth
-            g.drawLine(dotX + 1, dotY + 6, dotX + 6, dotY + 6);
-        } else {
-            // Idle — small smile
-            g.drawArc(dotX + 1, dotY + 3, 5, 4, 0, 180);
-        }
-
-        // Speed lines when running fast
+        g.setColor(new Color(255,255,255,200));
+        g.fillOval(dotX+1, dotY+1, 4, 3);
+        g.setColor(new Color(40,20,70));
+        if(right) g.fillOval(dotX+5, dotY+3, 2, 2);
+        else       g.fillOval(dotX+1, dotY+3, 2, 2);
+        g.setColor(new Color(60,30,90));
+        if(Math.abs(pvy) > 8f)      g.drawOval(dotX+2, dotY+5, 3, 3);
+        else if(!onGround)          g.drawArc(dotX+1, dotY+3, 6, 4, 0, -180);
+        else if(Math.abs(pvx) > 3f) g.drawLine(dotX+1, dotY+6, dotX+6, dotY+6);
+        else                        g.drawArc(dotX+1, dotY+3, 5, 4, 0, 180);
         if(Math.abs(pvx) > 4f && onGround) {
             int lineDir = pvx > 0 ? -1 : 1;
-            g.setColor(new Color(200, 200, 255, 60));
+            g.setColor(new Color(200,200,255,60));
             for(int li = 0; li < 3; li++) {
-                int lx = x + playerW / 2 + lineDir * (8 + li * 5);
-                int ly = y + 10 + li * 8;
-                g.drawLine(lx, ly, lx + lineDir * 8, ly);
+                int lx = x + playerW/2 + lineDir*(8+li*5);
+                int ly = y + 10 + li*8;
+                g.drawLine(lx, ly, lx+lineDir*8, ly);
             }
         }
     }
 
-    // ── IMPROVED CANNON ───────────────────────────────────────
+    // ── CANNON ────────────────────────────────────────────────
     void drawCannon(Graphics2D g, int x, int y, boolean right) {
-        // Cannon base/body
-        g.setColor(new Color(55, 35, 15));
-        g.fillRect(x - 5, y + 22, 40, 18);
-        // Base highlight
-        g.setColor(new Color(80, 55, 25));
-        g.fillRect(x - 5, y + 22, 40, 3);
-
-        // Wheels with spokes
+        g.setColor(new Color(55,35,15));
+        g.fillRect(x-5, y+22, 40, 18);
+        g.setColor(new Color(80,55,25));
+        g.fillRect(x-5, y+22, 40, 3);
         for(int wx = 0; wx < 2; wx++) {
-            int wbx = x - 2 + wx * 20;
-            int wby = y + 28;
-            // Wheel outer
-            g.setColor(new Color(35, 22, 8));
+            int wbx = x-2+wx*20, wby = y+28;
+            g.setColor(new Color(35,22,8));
             g.fillOval(wbx, wby, 16, 16);
-            // Wheel rim
-            g.setColor(new Color(65, 45, 20));
+            g.setColor(new Color(65,45,20));
             g.setStroke(new BasicStroke(2f));
-            g.drawOval(wbx + 1, wby + 1, 14, 14);
+            g.drawOval(wbx+1, wby+1, 14, 14);
             g.setStroke(new BasicStroke(1f));
-            // Spokes
-            int wcx = wbx + 8, wcy = wby + 8;
-            g.setColor(new Color(90, 65, 30));
+            int wcx=wbx+8, wcy=wby+8;
+            g.setColor(new Color(90,65,30));
             for(int si = 0; si < 4; si++) {
-                double a = si * Math.PI / 4 + (tick * 0.05f) * (right ? 1 : -1);
-                g.drawLine(wcx, wcy, wcx + (int)(6 * Math.cos(a)), wcy + (int)(6 * Math.sin(a)));
+                double a = si*Math.PI/4 + (tick*0.05f)*(right?1:-1);
+                g.drawLine(wcx, wcy, wcx+(int)(6*Math.cos(a)), wcy+(int)(6*Math.sin(a)));
             }
-            // Hub
-            g.setColor(new Color(120, 90, 40));
-            g.fillOval(wcx - 3, wcy - 3, 6, 6);
+            g.setColor(new Color(120,90,40));
+            g.fillOval(wcx-3, wcy-3, 6, 6);
         }
-
-        // Cannon barrel
-        int bx = right ? x + 18 : x - 12;
-        g.setColor(new Color(60, 62, 72));
-        g.fillRoundRect(bx, y + 8, 32, 16, 7, 7);
-        // Barrel highlight top
-        g.setColor(new Color(100, 102, 120));
-        g.fillRoundRect(bx, y + 8, 32, 5, 7, 4);
-        // Barrel ring band
-        g.setColor(new Color(40, 40, 50));
-        g.fillRect(right ? bx + 8 : bx + 20, y + 8, 4, 16);
-        // Barrel opening
-        int muzzleX = right ? bx + 26 : bx;
-        g.setColor(new Color(20, 20, 28));
-        g.fillOval(muzzleX, y + 10, 8, 12);
-        g.setColor(new Color(70, 70, 85));
-        g.drawOval(muzzleX, y + 10, 8, 12);
-
-        // Firing flash
-        if((tick / 4) % 3 == 0) {
-            float pulse = 0.5f + 0.5f * (float)Math.sin(tick * 0.3f);
-            g.setColor(new Color(255, 180, 0, (int)(100 + 60 * pulse)));
-            int fx = right ? x + 48 : x - 16;
-            g.fillOval(fx, y + 6, 18, 18);
-            g.setColor(new Color(255, 255, 150, (int)(80 * pulse)));
-            g.fillOval(fx + 3, y + 9, 10, 10);
+        int bx = right ? x+18 : x-12;
+        g.setColor(new Color(60,62,72));
+        g.fillRoundRect(bx, y+8, 32, 16, 7, 7);
+        g.setColor(new Color(100,102,120));
+        g.fillRoundRect(bx, y+8, 32, 5, 7, 4);
+        g.setColor(new Color(40,40,50));
+        g.fillRect(right ? bx+8 : bx+20, y+8, 4, 16);
+        int muzzleX = right ? bx+26 : bx;
+        g.setColor(new Color(20,20,28));
+        g.fillOval(muzzleX, y+10, 8, 12);
+        g.setColor(new Color(70,70,85));
+        g.drawOval(muzzleX, y+10, 8, 12);
+        if((tick/4) % 3 == 0) {
+            float pulse = 0.5f + 0.5f*(float)Math.sin(tick*0.3f);
+            g.setColor(new Color(255,180,0,(int)(100+60*pulse)));
+            int fx = right ? x+48 : x-16;
+            g.fillOval(fx, y+6, 18, 18);
+            g.setColor(new Color(255,255,150,(int)(80*pulse)));
+            g.fillOval(fx+3, y+9, 10, 10);
         }
     }
 
-    // ── IMPROVED GOAL ─────────────────────────────────────────
+    // ── GOAL ──────────────────────────────────────────────────
     void drawGoal(Graphics2D g, int x, int y) {
-        float pulse = 0.5f + 0.5f * (float)Math.sin(tick * 0.07f);
+        float pulse = 0.5f + 0.5f*(float)Math.sin(tick*0.07f);
         float spin = tick * 0.04f;
-
-        // Outer glow rings (animated)
         for(int ri = 3; ri >= 1; ri--) {
-            int r = ri * 14;
-            int alpha = (int)(15 + 12 * pulse) * (4 - ri);
-            g.setColor(new Color(60, 210, 100, alpha));
-            g.fillOval(x - r + GOAL_W/2, y - r + GOAL_H/2, GOAL_W + r*2, GOAL_H + r*2);
+            int r = ri*14;
+            int alpha = (int)(15+12*pulse)*(4-ri);
+            g.setColor(new Color(60,210,100,alpha));
+            g.fillOval(x-r+GOAL_W/2, y-r+GOAL_H/2, GOAL_W+r*2, GOAL_H+r*2);
         }
-
-        // Portal background
-        g.setColor(new Color(10, 80, 30));
+        g.setColor(new Color(10,80,30));
         g.fillOval(x, y, GOAL_W, GOAL_H);
-
-        // Swirling inner gradient effect
         for(int i = 0; i < 6; i++) {
-            double a = spin + i * Math.PI / 3.0;
-            int ix = x + GOAL_W/2 + (int)(14 * Math.cos(a));
-            int iy = y + GOAL_H/2 + (int)(18 * Math.sin(a));
-            int alpha2 = (int)(40 + 30 * Math.sin(spin * 3 + i));
-            g.setColor(new Color(50, 200, 100, alpha2));
-            g.fillOval(ix - 6, iy - 6, 12, 12);
+            double a = spin + i*Math.PI/3.0;
+            int ix = x+GOAL_W/2+(int)(14*Math.cos(a));
+            int iy = y+GOAL_H/2+(int)(18*Math.sin(a));
+            int alpha2 = (int)(40+30*Math.sin(spin*3+i));
+            g.setColor(new Color(50,200,100,alpha2));
+            g.fillOval(ix-6, iy-6, 12, 12);
         }
-
-        // Inner bright core
-        g.setColor(new Color(50, 200, 100, (int)(100 + 60 * pulse)));
-        g.fillOval(x + 6, y + 8, GOAL_W - 12, GOAL_H - 16);
-        g.setColor(new Color(150, 255, 180, (int)(80 + 60 * pulse)));
-        g.fillOval(x + 10, y + 14, GOAL_W - 20, GOAL_H - 26);
-
-        // Outer ring
-        g.setColor(new Color(0, 210, 90));
+        g.setColor(new Color(50,200,100,(int)(100+60*pulse)));
+        g.fillOval(x+6, y+8, GOAL_W-12, GOAL_H-16);
+        g.setColor(new Color(150,255,180,(int)(80+60*pulse)));
+        g.fillOval(x+10, y+14, GOAL_W-20, GOAL_H-26);
+        g.setColor(new Color(0,210,90));
         g.setStroke(new BasicStroke(3f));
         g.drawOval(x, y, GOAL_W, GOAL_H);
-        // Inner ring
-        g.setColor(new Color(100, 255, 160, (int)(160 + 60 * pulse)));
+        g.setColor(new Color(100,255,160,(int)(160+60*pulse)));
         g.setStroke(new BasicStroke(1.5f));
-        g.drawOval(x + 4, y + 4, GOAL_W - 8, GOAL_H - 8);
+        g.drawOval(x+4, y+4, GOAL_W-8, GOAL_H-8);
         g.setStroke(new BasicStroke(1f));
-
-        // Sparkle particles around goal
         for(int i = 0; i < 5; i++) {
-            double sa = spin * 2 + i * Math.PI * 0.4;
-            int spx = x + GOAL_W/2 + (int)(22 * Math.cos(sa));
-            int spy = y + GOAL_H/2 + (int)(28 * Math.sin(sa));
-            int salpha = (int)(80 + 60 * Math.sin(spin * 4 + i * 1.2));
-            g.setColor(new Color(180, 255, 200, salpha));
-            g.fillOval(spx - 2, spy - 2, 4, 4);
+            double sa = spin*2 + i*Math.PI*0.4;
+            int spx = x+GOAL_W/2+(int)(22*Math.cos(sa));
+            int spy = y+GOAL_H/2+(int)(28*Math.sin(sa));
+            int salpha = (int)(80+60*Math.sin(spin*4+i*1.2));
+            g.setColor(new Color(180,255,200,salpha));
+            g.fillOval(spx-2, spy-2, 4, 4);
         }
-
-        // EXIT text
         g.setColor(Color.WHITE);
         g.setFont(new Font("Courier New", Font.BOLD, 9));
-        g.drawString("EXIT", x + 5, y + GOAL_H / 2 + 4);
+        g.drawString("EXIT", x+5, y+GOAL_H/2+4);
     }
 
     void drawHUD(Graphics2D g) {
-        g.setColor(new Color(0, 0, 0, 150)); g.fillRoundRect(8, 8, 220, 72, 10, 10);
+        g.setColor(new Color(0,0,0,150)); g.fillRoundRect(8,8,220,72,10,10);
         g.setFont(new Font("Courier New", Font.BOLD, 13));
-        g.setColor(new Color(100, 220, 255));
-        g.drawString("LEVEL: " + (currentLevel + 1) + "/5 — " + getLevelName(), 16, 27);
-        g.setColor(new Color(255, 220, 80));
-        g.drawString("SCORE: " + totalScore, 16, 45);
-        g.setColor(new Color(255, 100, 100));
-        g.drawString("DEATHS: " + deaths, 16, 63);
+        g.setColor(new Color(100,220,255));
+        g.drawString("LEVEL: "+(currentLevel+1)+"/5 — "+getLevelName(), 16, 27);
+        g.setColor(new Color(255,220,80));
+        g.drawString("SCORE: "+totalScore, 16, 45);
+        g.setColor(new Color(255,100,100));
+        g.drawString("DEATHS: "+deaths, 16, 63);
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
-        g.setColor(new Color(255, 255, 255, 70));
+        g.setColor(new Color(255,255,255,70));
         String pauseHint = "ESC: Pause";
-        g.drawString(pauseHint, W - g.getFontMetrics().stringWidth(pauseHint) - 10, 20);
+        g.drawString(pauseHint, W-g.getFontMetrics().stringWidth(pauseHint)-10, 20);
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
-        g.setColor(new Color(255, 255, 255, 90));
-        g.drawString("A/D: Move   SPACE: Jump   R: Restart   ESC: Pause", W / 2 - 190, H - 10);
+        g.setColor(new Color(255,255,255,90));
+        g.drawString("A/D: Move   SPACE: Jump   R: Restart   ESC: Pause", W/2-190, H-10);
     }
 
     String getLevelName() {
@@ -1683,78 +1657,75 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
     // ── DEATH SCREEN ──────────────────────────────────────────
     void drawDeathScreen(Graphics2D g) {
-        g.setColor(new Color(0, 0, 0, 160)); g.fillRect(0, 0, W, H);
-        int pw = 500, ph = 220, panX = W / 2 - pw / 2, panY = H / 2 - ph / 2;
-        g.setColor(new Color(15, 5, 25, 230)); g.fillRoundRect(panX, panY, pw, ph, 18, 18);
-        g.setColor(new Color(200, 30, 30)); g.setStroke(new BasicStroke(2));
-        g.drawRoundRect(panX, panY, pw, ph, 18, 18); g.setStroke(new BasicStroke(1));
+        g.setColor(new Color(0,0,0,160)); g.fillRect(0,0,W,H);
+        int pw=500, ph=220, panX=W/2-pw/2, panY=H/2-ph/2;
+        g.setColor(new Color(15,5,25,230)); g.fillRoundRect(panX,panY,pw,ph,18,18);
+        g.setColor(new Color(200,30,30)); g.setStroke(new BasicStroke(2));
+        g.drawRoundRect(panX,panY,pw,ph,18,18); g.setStroke(new BasicStroke(1));
         g.setFont(new Font("Courier New", Font.BOLD, 42));
         drawShadowText(g, currentDeathMsg[2],
-            W / 2 - g.getFontMetrics().stringWidth(currentDeathMsg[2]) / 2, panY + 55,
-            new Color(255, 60, 60), new Color(100, 0, 0));
+            W/2-g.getFontMetrics().stringWidth(currentDeathMsg[2])/2, panY+55,
+            new Color(255,60,60), new Color(100,0,0));
         g.setFont(new Font("Courier New", Font.BOLD, 20));
-        g.setColor(new Color(240, 220, 220));
+        g.setColor(new Color(240,220,220));
         String msg = currentDeathMsg[0];
-        g.drawString(msg, W / 2 - g.getFontMetrics().stringWidth(msg) / 2, panY + 100);
+        g.drawString(msg, W/2-g.getFontMetrics().stringWidth(msg)/2, panY+100);
         g.setFont(new Font("Courier New", Font.ITALIC, 15));
-        g.setColor(new Color(180, 160, 180));
+        g.setColor(new Color(180,160,180));
         String sub = currentDeathMsg[1];
-        g.drawString(sub, W / 2 - g.getFontMetrics().stringWidth(sub) / 2, panY + 125);
+        g.drawString(sub, W/2-g.getFontMetrics().stringWidth(sub)/2, panY+125);
         g.setFont(new Font("Courier New", Font.PLAIN, 13));
-        g.setColor(new Color(255, 120, 120));
-        String dc = "Total deaths: " + deaths + " — you got this!";
-        g.drawString(dc, W / 2 - g.getFontMetrics().stringWidth(dc) / 2, panY + 155);
-        if((tick / 20) % 2 == 0) {
+        g.setColor(new Color(255,120,120));
+        String dc = "Total deaths: "+deaths+" — you got this!";
+        g.drawString(dc, W/2-g.getFontMetrics().stringWidth(dc)/2, panY+155);
+        if((tick/20)%2 == 0) {
             g.setFont(new Font("Courier New", Font.BOLD, 15));
-            g.setColor(new Color(255, 200, 80));
+            g.setColor(new Color(255,200,80));
             String pr = "R: Try Again   |   ESC: Menu";
-            g.drawString(pr, W / 2 - g.getFontMetrics().stringWidth(pr) / 2, panY + 193);
+            g.drawString(pr, W/2-g.getFontMetrics().stringWidth(pr)/2, panY+193);
         }
     }
 
     // ── WIN LEVEL ─────────────────────────────────────────────
     void drawWinLevel(Graphics2D g) {
-        g.setColor(new Color(0, 0, 0, 120)); g.fillRect(0, 0, W, H);
-        int pw = 440, ph = 160, panX = W / 2 - pw / 2, panY = H / 2 - ph / 2 - 30;
-        g.setColor(new Color(5, 25, 15, 220)); g.fillRoundRect(panX, panY, pw, ph, 15, 15);
-        g.setColor(new Color(0, 200, 80)); g.setStroke(new BasicStroke(2));
-        g.drawRoundRect(panX, panY, pw, ph, 15, 15); g.setStroke(new BasicStroke(1));
+        g.setColor(new Color(0,0,0,120)); g.fillRect(0,0,W,H);
+        int pw=440, ph=160, panX=W/2-pw/2, panY=H/2-ph/2-30;
+        g.setColor(new Color(5,25,15,220)); g.fillRoundRect(panX,panY,pw,ph,15,15);
+        g.setColor(new Color(0,200,80)); g.setStroke(new BasicStroke(2));
+        g.drawRoundRect(panX,panY,pw,ph,15,15); g.setStroke(new BasicStroke(1));
         g.setFont(new Font("Courier New", Font.BOLD, 34));
         String msg = (currentLevel >= 4) ? "YOU DID IT!!!" : "LEVEL CLEAR!";
-        drawShadowText(g, msg, W / 2 - g.getFontMetrics().stringWidth(msg) / 2, panY + 50,
-            new Color(80, 255, 130), new Color(0, 80, 40));
+        drawShadowText(g, msg, W/2-g.getFontMetrics().stringWidth(msg)/2, panY+50,
+            new Color(80,255,130), new Color(0,80,40));
         g.setFont(new Font("Courier New", Font.PLAIN, 15));
-        g.setColor(new Color(180, 240, 200));
+        g.setColor(new Color(180,240,200));
         String sub = (currentLevel < 4) ? "Next level incoming... (stay sharp!)" : "You beat it. Genuinely impressive.";
-        g.drawString(sub, W / 2 - g.getFontMetrics().stringWidth(sub) / 2, panY + 83);
-        g.setColor(new Color(0, 80, 40));
-        g.fillRoundRect(panX + 20, panY + 103, pw - 40, 18, 6, 6);
+        g.drawString(sub, W/2-g.getFontMetrics().stringWidth(sub)/2, panY+83);
+        g.setColor(new Color(0,80,40));
+        g.fillRoundRect(panX+20, panY+103, pw-40, 18, 6, 6);
         float prog = (float)winTimer / 100;
-        g.setColor(new Color(0, 200, 80));
-        g.fillRoundRect(panX + 20, panY + 103, (int)((pw - 40) * prog), 18, 6, 6);
+        g.setColor(new Color(0,200,80));
+        g.fillRoundRect(panX+20, panY+103, (int)((pw-40)*prog), 18, 6, 6);
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
-        g.setColor(new Color(255, 255, 255, 150));
-        g.drawString("Loading next level...", panX + 20, panY + 116);
+        g.setColor(new Color(255,255,255,150));
+        g.drawString("Loading next level...", panX+20, panY+116);
     }
 
     // ── WIN GAME ──────────────────────────────────────────────
     void drawWinGame(Graphics2D g) {
         float t = tick * 0.015f;
-        g.setPaint(new GradientPaint(0, 0,
-            new Color((int)(10 + 10 * Math.sin(t)), 30, (int)(10 + 10 * Math.sin(t + 2))),
-            W, H, new Color(5, (int)(30 + 15 * Math.sin(t + 1)), 10)));
-        g.fillRect(0, 0, W, H);
-
+        g.setPaint(new GradientPaint(0,0,
+            new Color((int)(10+10*Math.sin(t)),30,(int)(10+10*Math.sin(t+2))),
+            W,H, new Color(5,(int)(30+15*Math.sin(t+1)),10)));
+        g.fillRect(0,0,W,H);
         for(Particle p : particles) {
             float alpha = (float)p.life / p.maxLife;
-            g.setColor(new Color(p.color.getRed(), p.color.getGreen(), p.color.getBlue(), (int)(alpha * 255)));
-            g.fillRect((int)(p.x - camX / 4) - 3, (int)p.y - 3, 6, 6);
+            g.setColor(new Color(p.color.getRed(),p.color.getGreen(),p.color.getBlue(),(int)(alpha*255)));
+            g.fillRect((int)(p.x-camX/4)-3,(int)p.y-3,6,6);
         }
-
         g.setFont(new Font("Courier New", Font.BOLD, 52));
-        drawShadowText(g, "YOU ESCAPED!", W / 2 - g.getFontMetrics().stringWidth("YOU ESCAPED!") / 2, 130,
-            new Color(100, 255, 140), new Color(0, 100, 50));
-
+        drawShadowText(g, "YOU ESCAPED!", W/2-g.getFontMetrics().stringWidth("YOU ESCAPED!")/2, 130,
+            new Color(100,255,140), new Color(0,100,50));
         g.setFont(new Font("Courier New", Font.ITALIC, 18));
         String[] lines = {
             "Against all odds. Against...whatever that was.",
@@ -1766,39 +1737,36 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         };
         for(int i = 0; i < lines.length; i++) {
             g.setColor(lines[i].startsWith("Final") || lines[i].startsWith("Total")
-                ? new Color(255, 230, 80) : new Color(180, 240, 195));
-            g.drawString(lines[i], W / 2 - g.getFontMetrics().stringWidth(lines[i]) / 2, 195 + i * 32);
+                ? new Color(255,230,80) : new Color(180,240,195));
+            g.drawString(lines[i], W/2-g.getFontMetrics().stringWidth(lines[i])/2, 195+i*32);
         }
-
-        if((tick / 25) % 2 == 0) {
+        if((tick/25)%2 == 0) {
             g.setFont(new Font("Courier New", Font.BOLD, 16));
-            g.setColor(new Color(255, 200, 80));
+            g.setColor(new Color(255,200,80));
             String pr = "ESC: Main Menu";
-            g.drawString(pr, W / 2 - g.getFontMetrics().stringWidth(pr) / 2, H - 30);
+            g.drawString(pr, W/2-g.getFontMetrics().stringWidth(pr)/2, H-30);
         }
-
-        if(tick % 3 == 0 && particles.size() < 200)
-            particles.add(new Particle(rng.nextInt(W), -10,
-                (rng.nextFloat() - 0.5f) * 2, 2 + rng.nextFloat() * 3,
-                120 + rng.nextInt(60), new Color(rng.nextInt(255), rng.nextInt(255), rng.nextInt(255))));
-
+        if(tick%3==0 && particles.size()<200)
+            particles.add(new Particle(rng.nextInt(W),-10,
+                (rng.nextFloat()-0.5f)*2, 2+rng.nextFloat()*3,
+                120+rng.nextInt(60), new Color(rng.nextInt(255),rng.nextInt(255),rng.nextInt(255))));
         Iterator<Particle> it = particles.iterator();
-        while(it.hasNext()) { Particle p = it.next(); p.x += p.vx; p.y += p.vy; p.life--; if(p.life <= 0) it.remove(); }
+        while(it.hasNext()) { Particle p=it.next(); p.x+=p.vx; p.y+=p.vy; p.life--; if(p.life<=0) it.remove(); }
     }
 
     String getRank() {
-        if(deaths == 0) return "Impossible. Are you human?";
-        else if(deaths < 5) return "Suspiciously good";
-        else if(deaths < 15) return "Genuinely impressive";
-        else if(deaths < 30) return "Solid run";
-        else if(deaths < 60) return "Getting there";
-        else if(deaths < 100) return "Determination";
-        else return "Never give up!";
+        if(deaths==0)       return "Impossible. Are you human?";
+        else if(deaths<5)   return "Suspiciously good";
+        else if(deaths<15)  return "Genuinely impressive";
+        else if(deaths<30)  return "Solid run";
+        else if(deaths<60)  return "Getting there";
+        else if(deaths<100) return "Determination";
+        else                return "Never give up!";
     }
 
     void drawShadowText(Graphics2D g, String text, int x, int y, Color main, Color shadow) {
-        g.setColor(shadow); g.drawString(text, x + 3, y + 3);
-        g.setColor(main); g.drawString(text, x, y);
+        g.setColor(shadow); g.drawString(text, x+3, y+3);
+        g.setColor(main);   g.drawString(text, x, y);
     }
 
     // ══════════════════════════════════════════════════════════
@@ -1807,90 +1775,81 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     @Override
     public void keyPressed(KeyEvent e) {
         int k = e.getKeyCode();
-
         if(state == State.MENU) {
-            if(k == KeyEvent.VK_UP || k == KeyEvent.VK_W) menuSel = Math.max(0, menuSel - 1);
-            if(k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S) menuSel = Math.min(2, menuSel + 1);
-            if(k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE) {
+            if(k==KeyEvent.VK_UP   || k==KeyEvent.VK_W) menuSel = Math.max(0, menuSel-1);
+            if(k==KeyEvent.VK_DOWN || k==KeyEvent.VK_S) menuSel = Math.min(2, menuSel+1);
+            if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
                 switch(menuSel) {
-                    case 0 -> { currentLevel = 0; totalScore = 0; deaths = 0; startLevel(0); }
-                    case 1 -> { levelSelectSel = 0; state = State.LEVEL_SELECT; }
+                    case 0 -> { currentLevel=0; totalScore=0; deaths=0; startLevel(0); }
+                    case 1 -> { levelSelectSel=0; state=State.LEVEL_SELECT; }
                     case 2 -> System.exit(0);
                 }
             }
             return;
         }
-
         if(state == State.LEVEL_SELECT) {
-            if(k == KeyEvent.VK_LEFT || k == KeyEvent.VK_A) levelSelectSel = Math.max(0, levelSelectSel - 1);
-            if(k == KeyEvent.VK_RIGHT || k == KeyEvent.VK_D) levelSelectSel = Math.min(4, levelSelectSel + 1);
-            if(k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE) {
+            if(k==KeyEvent.VK_LEFT  || k==KeyEvent.VK_A) levelSelectSel = Math.max(0, levelSelectSel-1);
+            if(k==KeyEvent.VK_RIGHT || k==KeyEvent.VK_D) levelSelectSel = Math.min(4, levelSelectSel+1);
+            if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
                 if(levelSelectSel <= highestUnlockedLevel) {
-                    currentLevel = levelSelectSel; totalScore = 0; deaths = 0;
-                    startLevel(currentLevel);
+                    currentLevel=levelSelectSel; totalScore=0; deaths=0; startLevel(currentLevel);
                 }
             }
-            if(k == KeyEvent.VK_ESCAPE) state = State.MENU;
+            if(k==KeyEvent.VK_ESCAPE) state=State.MENU;
             return;
         }
-
         if(state == State.WIN_GAME) {
-            if(k == KeyEvent.VK_ESCAPE) { state = State.MENU; particles.clear(); }
+            if(k==KeyEvent.VK_ESCAPE) { state=State.MENU; particles.clear(); }
             return;
         }
-
         if(state == State.PAUSED) { handlePauseKey(k); return; }
-
-        // Block input during death animation
         if(state == State.DYING) return;
-
-        if(k == KeyEvent.VK_A || k == KeyEvent.VK_LEFT) leftDown = true;
-        if(k == KeyEvent.VK_D || k == KeyEvent.VK_RIGHT) rightDown = true;
-        if(k == KeyEvent.VK_SPACE || k == KeyEvent.VK_UP || k == KeyEvent.VK_W) jumpDown = true;
-        if(k == KeyEvent.VK_R) {
-            if(state == State.DEAD || state == State.PLAYING) startLevel(currentLevel);
+        if(k==KeyEvent.VK_A     || k==KeyEvent.VK_LEFT)  leftDown = true;
+        if(k==KeyEvent.VK_D     || k==KeyEvent.VK_RIGHT) rightDown = true;
+        if(k==KeyEvent.VK_SPACE || k==KeyEvent.VK_UP || k==KeyEvent.VK_W) jumpDown = true;
+        if(k==KeyEvent.VK_R) {
+            if(state==State.DEAD || state==State.PLAYING) startLevel(currentLevel);
         }
-        if(k == KeyEvent.VK_ESCAPE) {
-            if(state == State.PLAYING) {
-                leftDown = false; rightDown = false; jumpDown = false;
-                pauseSel = 0; pauseLevelSelect = false;
-                state = State.PAUSED;
-            } else if(state == State.DEAD) {
-                state = State.MENU; particles.clear(); leftDown = rightDown = jumpDown = false;
+        if(k==KeyEvent.VK_ESCAPE) {
+            if(state==State.PLAYING) {
+                leftDown=false; rightDown=false; jumpDown=false;
+                pauseSel=0; pauseLevelSelect=false; state=State.PAUSED;
+            } else if(state==State.DEAD) {
+                state=State.MENU; particles.clear(); leftDown=rightDown=jumpDown=false;
             }
         }
     }
 
     void handlePauseKey(int k) {
         if(pauseLevelSelect) {
-            if(k == KeyEvent.VK_LEFT || k == KeyEvent.VK_A) pauseLevelSel = Math.max(0, pauseLevelSel - 1);
-            if(k == KeyEvent.VK_RIGHT || k == KeyEvent.VK_D) pauseLevelSel = Math.min(4, pauseLevelSel + 1);
-            if(k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE) {
+            if(k==KeyEvent.VK_LEFT  || k==KeyEvent.VK_A) pauseLevelSel = Math.max(0, pauseLevelSel-1);
+            if(k==KeyEvent.VK_RIGHT || k==KeyEvent.VK_D) pauseLevelSel = Math.min(4, pauseLevelSel+1);
+            if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
                 if(pauseLevelSel <= highestUnlockedLevel) {
-                    currentLevel = pauseLevelSel; pauseLevelSelect = false; startLevel(currentLevel);
+                    currentLevel=pauseLevelSel; pauseLevelSelect=false; startLevel(currentLevel);
                 }
             }
-            if(k == KeyEvent.VK_ESCAPE) pauseLevelSelect = false;
+            if(k==KeyEvent.VK_ESCAPE) pauseLevelSelect=false;
             return;
         }
-        if(pauseSel == 3) {
-            if(k == KeyEvent.VK_LEFT) { volume = Math.max(0, volume - 5); applyVolume(); return; }
-            if(k == KeyEvent.VK_RIGHT) { volume = Math.min(100, volume + 5); applyVolume(); return; }
+        if(pauseSel==3) {
+            if(k==KeyEvent.VK_LEFT)  { volume=Math.max(0,volume-5);   applyVolume(); return; }
+            if(k==KeyEvent.VK_RIGHT) { volume=Math.min(100,volume+5); applyVolume(); return; }
         }
-        if(k == KeyEvent.VK_UP || k == KeyEvent.VK_W)
-            pauseSel = (pauseSel - 1 + PAUSE_OPTIONS.length) % PAUSE_OPTIONS.length;
-        if(k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S)
-            pauseSel = (pauseSel + 1) % PAUSE_OPTIONS.length;
-        if(k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE) {
+        if(k==KeyEvent.VK_UP   || k==KeyEvent.VK_W)
+            pauseSel = (pauseSel-1+PAUSE_OPTIONS.length) % PAUSE_OPTIONS.length;
+        if(k==KeyEvent.VK_DOWN || k==KeyEvent.VK_S)
+            pauseSel = (pauseSel+1) % PAUSE_OPTIONS.length;
+        if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
             switch(pauseSel) {
-                case 0 -> state = State.PLAYING;
+                case 0 -> state=State.PLAYING;
                 case 1 -> startLevel(currentLevel);
-                case 2 -> { pauseLevelSel = currentLevel; pauseLevelSelect = true; }
-                case 3 -> { volume = Math.min(100, volume + 10); if(volume > 100) volume = 0; applyVolume(); }
-                case 4 -> { state = State.MENU; particles.clear(); leftDown = false; rightDown = false; jumpDown = false; }
+                case 2 -> { pauseLevelSel=currentLevel; pauseLevelSelect=true; }
+                case 3 -> { volume=Math.min(100,volume+10); if(volume>100) volume=0; applyVolume(); }
+                case 4 -> { state=State.MENU; particles.clear(); leftDown=false; rightDown=false; jumpDown=false; }
             }
         }
-        if(k == KeyEvent.VK_ESCAPE) state = State.PLAYING;
+        if(k==KeyEvent.VK_ESCAPE) state=State.PLAYING;
     }
 
     void applyVolume() { /* wire up to Clip FloatControl */ }
@@ -1898,14 +1857,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     @Override
     public void keyReleased(KeyEvent e) {
         int k = e.getKeyCode();
-        if(k == KeyEvent.VK_A || k == KeyEvent.VK_LEFT) leftDown = false;
-        if(k == KeyEvent.VK_D || k == KeyEvent.VK_RIGHT) rightDown = false;
-        if(k == KeyEvent.VK_SPACE || k == KeyEvent.VK_UP || k == KeyEvent.VK_W) jumpDown = false;
+        if(k==KeyEvent.VK_A     || k==KeyEvent.VK_LEFT)  leftDown=false;
+        if(k==KeyEvent.VK_D     || k==KeyEvent.VK_RIGHT) rightDown=false;
+        if(k==KeyEvent.VK_SPACE || k==KeyEvent.VK_UP || k==KeyEvent.VK_W) jumpDown=false;
     }
 
     @Override public void keyTyped(KeyEvent e) {}
 
-    // ── Main ──────────────────────────────────────────────────
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("i LOST — Troll Platformer");
