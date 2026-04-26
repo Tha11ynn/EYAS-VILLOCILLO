@@ -11,7 +11,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ── Window ──────────────────────────────────────────────
     static final int W = 900, H = 550;
 
-    // ── Physics (smoother, more forgiving) ──────────────────
+    // ── Physics ──────────────────────────────────────────────
     static final float GRAVITY      = 0.55f;
     static final float JUMP_VEL     = -14.5f;
     static final float MOVE_SPD     = 5.5f;
@@ -22,15 +22,15 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     static final int   COYOTE_TIME  = 8;
     static final int   JUMP_BUFFER  = 8;
 
-    // ── Game States ─────────────────────────────────────────
+    // ── Game States ──────────────────────────────────────────
     enum State { MENU, LEVEL_SELECT, PLAYING, PAUSED, DYING, DEAD, WIN_LEVEL, WIN_GAME, TRANSITIONING }
     State state = State.MENU;
 
     // ── Wipe Transition ──────────────────────────────────────
-    static final int WIPE_TICKS = 38;   // total ticks for the wipe
+    static final int WIPE_TICKS = 38;
     int   wipeTimer      = 0;
-    State wipeTargetState = State.PLAYING; // state to enter after wipe
-    int   wipePendingLevel = 0;            // which level to load at end of wipe
+    State wipeTargetState = State.PLAYING;
+    int   wipePendingLevel = 0;
 
     int currentLevel = 0;
     int totalScore   = 0;
@@ -76,6 +76,18 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     int levelSelectSel = 0;
     static final String[] MENU_OPTIONS = { "▶  START GAME", "⊞  LEVEL SELECT", "✕  QUIT" };
     static final String[] LEVEL_NAMES = { "Tutorial", "Getting There", "Troll Central", "Almost There", "The Finale" };
+
+    // ── NEW: Menu animation fields ────────────────────────────
+    float[] menuParticleX   = new float[60];
+    float[] menuParticleY   = new float[60];
+    float[] menuParticleVY  = new float[60];
+    float[] menuParticleSz  = new float[60];
+    int[]   menuParticleHue = new int[60];
+    boolean menuParticlesInit = false;
+    int     glitchTick  = 0;
+    int     glitchTimer = 0;
+    float   glitchOffX  = 0;
+    int     tickerOffset = 0;
 
     // ── Pause Menu ───────────────────────────────────────────
     int pauseSel = 0;
@@ -200,7 +212,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ══════════════════════════════════════════════════════════
     //  LEVEL BUILDING
     // ══════════════════════════════════════════════════════════
-
     void startLevel(int lvl) {
         platforms.clear(); spikes.clear(); cannons.clear();
         cannonballs.clear(); particles.clear(); bodyParts.clear();
@@ -211,7 +222,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         winTimer=0; levelTimer=0;
         deathAnimTimer=0; screenShakeTick=0;
         leftDown=false; rightDown=false; jumpDown=false; jumpConsumed=false;
-
         switch(lvl) {
             case 0 -> buildLevel1();
             case 1 -> buildLevel2();
@@ -222,12 +232,10 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         state = State.PLAYING;
     }
 
-    /** Begin a wipe-right transition that ends by loading the given level. */
     void beginWipeToLevel(int lvl) {
         wipePendingLevel = lvl;
         wipeTargetState  = State.PLAYING;
         wipeTimer        = 0;
-        // Pre-load level data so the game world is ready under the wipe
         platforms.clear(); spikes.clear(); cannons.clear();
         cannonballs.clear(); particles.clear(); bodyParts.clear();
         tutCards.clear(); activeTutCard = null;
@@ -515,7 +523,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         repaint();
     }
 
-    // ── Wipe update ───────────────────────────────────────────
     void updateWipe() {
         wipeTimer++;
         if(wipeTimer >= WIPE_TICKS) {
@@ -523,7 +530,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // Easing: cubic ease-in-out
     float easeInOut(float t) {
         t = Math.max(0f, Math.min(1f, t));
         return t < 0.5f ? 4*t*t*t : 1 - (float)Math.pow(-2*t+2, 3)/2;
@@ -840,38 +846,22 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── WIPE-RIGHT TRANSITION ─────────────────────────────────
-    /**
-     * Draws a wipe-right transition:
-     *   LEFT side  → the game world (destination)
-     *   RIGHT side → the menu (source, sliding away)
-     *
-     * A sharp vertical edge sweeps from left to right over WIPE_TICKS frames.
-     * A thin glowing seam rides the leading edge for polish.
-     */
+    // ── WIPE TRANSITION ──────────────────────────────────────
     void drawWipeTransition(Graphics2D g) {
         float progress = easeInOut((float)wipeTimer / WIPE_TICKS);
-        int edgeX = (int)(W * progress);   // how many pixels of game are revealed
-
-        // ── 1. Draw the full game world behind a clip ────────
+        int edgeX = (int)(W * progress);
         Shape savedClip = g.getClip();
         g.setClip(0, 0, edgeX, H);
         drawGame(g);
         g.setClip(savedClip);
-
-        // ── 2. Draw the menu on the right (translating right) ─
         AffineTransform saved = g.getTransform();
-        // Slide the menu slightly to the right as it exits (parallax push feel)
         int menuPushX = (int)(edgeX * 0.18f);
         g.translate(menuPushX, 0);
         g.setClip(edgeX - menuPushX, 0, W, H);
         drawMenu(g);
         g.setClip(savedClip);
         g.setTransform(saved);
-
-        // ── 3. Glowing seam at the wipe edge ─────────────────
         if(edgeX > 0 && edgeX < W) {
-            // Wide ambient glow (radial-style using multiple rects)
             int[] widths = {22, 14, 8, 4, 2};
             int[] alphas = { 18,  35, 60, 120, 220};
             for(int i = 0; i < widths.length; i++) {
@@ -879,13 +869,10 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 g.setColor(new Color(180, 220, 255, alphas[i]));
                 g.fillRect(edgeX - hw, 0, hw * 2, H);
             }
-            // Bright core line
             g.setColor(new Color(230, 245, 255, 255));
             g.setStroke(new BasicStroke(1.5f));
             g.drawLine(edgeX, 0, edgeX, H);
             g.setStroke(new BasicStroke(1f));
-
-            // Animated sparkles riding the seam edge
             for(int si = 0; si < 8; si++) {
                 int sy = (int)(((si * 137 + tick * 4) % (H + 30)) - 15);
                 float sparkle = (float)(0.5 + 0.5 * Math.sin(tick * 0.25f + si * 0.9f));
@@ -895,16 +882,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 g.fillOval(edgeX - ss/2, sy - ss/2, ss, ss);
             }
         }
-
-        // ── 4. "LEVEL 1" label fades in during the last 30% ──
         if(progress > 0.70f) {
             float labelAlpha = (progress - 0.70f) / 0.30f;
             int la = (int)(labelAlpha * 200);
-            g.setColor(new Color(100, 220, 255, la));
             g.setFont(new Font("Courier New", Font.BOLD, 14));
             String lbl = "LEVEL " + (wipePendingLevel + 1) + " — " + LEVEL_NAMES[wipePendingLevel];
             int lw = g.getFontMetrics().stringWidth(lbl);
-            // Draw with a dark drop-shadow for legibility
             g.setColor(new Color(0, 0, 0, la / 2));
             g.drawString(lbl, W/2 - lw/2 + 2, H - 28);
             g.setColor(new Color(100, 220, 255, la));
@@ -975,44 +958,323 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── MENU ──────────────────────────────────────────────────
-    void drawMenu(Graphics2D g) {
-        float t = tick * 0.01f;
-        Color c1 = new Color((int)(20+10*Math.sin(t)),(int)(5+5*Math.sin(t+1)),(int)(40+10*Math.sin(t+2)));
-        Color c2 = new Color((int)(50+20*Math.sin(t+3)),(int)(10+10*Math.sin(t+4)),(int)(80+20*Math.sin(t+5)));
-        g.setPaint(new GradientPaint(0,0,c1,W,H,c2));
-        g.fillRect(0,0,W,H);
-        g.setFont(new Font("Courier New", Font.BOLD, 54));
-        String title = "i   LOST";
-        drawShadowText(g, title, W/2-g.getFontMetrics().stringWidth(title)/2, 130,
-            new Color(255,80,80), new Color(120,0,0));
-        g.setFont(new Font("Courier New", Font.PLAIN, 15));
-        g.setColor(new Color(200,200,220));
-        String sub = "A normal platformer. Keep calm and keep on going!";
-        g.drawString(sub, W/2-g.getFontMetrics().stringWidth(sub)/2, 168);
-        drawPlayerChar(g, W/2-7, 195, true, (tick/8)%4);
-        for(int i = 0; i < MENU_OPTIONS.length; i++) {
-            boolean sel = (menuSel == i);
-            g.setFont(new Font("Courier New", Font.BOLD, sel ? 26 : 22));
-            Color col = sel ? new Color(255,200,80) : new Color(160,160,200);
-            if(sel) { g.setColor(new Color(255,200,80,40)); g.fillRoundRect(W/2-130,283+i*55-28,260,36,8,8); }
-            g.setColor(col);
-            g.drawString(MENU_OPTIONS[i], W/2-g.getFontMetrics().stringWidth(MENU_OPTIONS[i])/2, 283+i*55);
+    // ══════════════════════════════════════════════════════════
+    //  ENHANCED MENU
+    // ══════════════════════════════════════════════════════════
+
+    void initMenuParticles() {
+        for (int i = 0; i < menuParticleX.length; i++) {
+            menuParticleX[i]  = rng.nextFloat() * W;
+            menuParticleY[i]  = rng.nextFloat() * H;
+            menuParticleVY[i] = -(0.3f + rng.nextFloat() * 0.9f);
+            menuParticleSz[i] = 2f + rng.nextFloat() * 5f;
+            menuParticleHue[i]= rng.nextInt(360);
         }
-        g.setFont(new Font("Courier New", Font.PLAIN, 12));
-        g.setColor(new Color(150,150,170));
-        g.drawString("A/D: Move   SPACE: Jump   ↑↓: Select   ENTER: Confirm", W/2-230, H-30);
-        String[] legend = {
-            "Red when stepped on = Fake  |  Cyan ↑↑ = Bouncy",
-            "Faint shimmer = Invisible  |  Red trails = Chasing spike",
+        menuParticlesInit = true;
+    }
+
+    void updateMenuParticles() {
+        for (int i = 0; i < menuParticleY.length; i++) {
+            menuParticleY[i] += menuParticleVY[i];
+            menuParticleX[i] += (float) Math.sin(tick * 0.012f + i * 0.7f) * 0.4f;
+            if (menuParticleY[i] < -10) {
+                menuParticleY[i] = H + 5;
+                menuParticleX[i] = rng.nextFloat() * W;
+            }
+        }
+        glitchTick++;
+        if (glitchTimer > 0) {
+            glitchTimer--;
+            glitchOffX = (rng.nextFloat() - 0.5f) * 6f;
+            if (glitchTimer == 0) glitchOffX = 0;
+        } else if (glitchTick % 240 == 0) {
+            glitchTimer = 5 + rng.nextInt(6);
+        }
+        tickerOffset--;
+    }
+
+    void drawMenu(Graphics2D g) {
+        if (!menuParticlesInit) initMenuParticles();
+        updateMenuParticles();
+
+        float t = tick * 0.01f;
+
+        // ── 1. Deep animated background gradient ─────────────
+        Color bg1 = new Color(
+            (int)(10 + 8 * Math.sin(t)),
+            (int)(3  + 4 * Math.sin(t + 1)),
+            (int)(28 + 12 * Math.sin(t + 2)));
+        Color bg2 = new Color(
+            (int)(35 + 18 * Math.sin(t + 3)),
+            (int)(6  +  6 * Math.sin(t + 4)),
+            (int)(65 + 22 * Math.sin(t + 5)));
+        g.setPaint(new GradientPaint(0, 0, bg1, W, H, bg2));
+        g.fillRect(0, 0, W, H);
+
+        // Subtle vignette
+        float[] vFrac = {0f, 0.4f, 1f};
+        Color[] vCol  = {new Color(0,0,0,0), new Color(0,0,0,0), new Color(0,0,0,120)};
+        g.setPaint(new RadialGradientPaint(W/2f, H/2f, W*0.75f, vFrac, vCol));
+        g.fillRect(0, 0, W, H);
+        g.setPaint(null);
+
+        // ── 2. CRT scanlines ─────────────────────────────────
+        for (int sy = 0; sy < H; sy += 4) {
+            g.setColor(new Color(0, 0, 0, 26));
+            g.fillRect(0, sy, W, 2);
+        }
+
+        // ── 3. Floating ambient particles ────────────────────
+        for (int i = 0; i < menuParticleX.length; i++) {
+            float life = (float)(0.5 + 0.5 * Math.sin(tick * 0.04f + i * 0.53f));
+            int   alpha = (int)(40 + 120 * life);
+            float sz    = menuParticleSz[i] * (0.7f + 0.3f * life);
+            int hue = (menuParticleHue[i] + tick / 3) % 360;
+            Color pc = Color.getHSBColor(hue / 360f, 0.6f, 1.0f);
+            // Outer glow
+            g.setColor(new Color(pc.getRed(), pc.getGreen(), pc.getBlue(), alpha / 4));
+            g.fillOval((int)(menuParticleX[i] - sz * 1.8f), (int)(menuParticleY[i] - sz * 1.8f),
+                       (int)(sz * 3.6f), (int)(sz * 3.6f));
+            // Core dot
+            g.setColor(new Color(pc.getRed(), pc.getGreen(), pc.getBlue(), alpha));
+            g.fillOval((int)(menuParticleX[i] - sz / 2), (int)(menuParticleY[i] - sz / 2),
+                       (int)sz, (int)sz);
+        }
+
+        // ── 4. Corner bracket flourishes ─────────────────────
+        drawCornerFlourishMenu(g, 0, 0, false, false);
+        drawCornerFlourishMenu(g, W, 0, true,  false);
+        drawCornerFlourishMenu(g, 0, H, false, true);
+        drawCornerFlourishMenu(g, W, H, true,  true);
+
+        // ── 5. Horizontal divider lines ───────────────────────
+        float lineAlpha = 0.35f + 0.15f * (float)Math.sin(tick * 0.05f);
+        g.setColor(new Color(120, 60, 220, (int)(lineAlpha * 255)));
+        g.setStroke(new BasicStroke(1.2f));
+        g.drawLine(30, 153, W - 30, 153);
+        g.drawLine(30, 156, W - 30, 156);
+        g.setColor(new Color(80, 30, 160, (int)(lineAlpha * 170)));
+        g.drawLine(30, 158, W - 30, 158);
+        g.setStroke(new BasicStroke(1f));
+
+        // ── 6. TITLE — glow rings + glitch + shimmer ─────────
+        g.setFont(new Font("Courier New", Font.BOLD, 58));
+        String title = "i   LOST";
+        int titleW = g.getFontMetrics().stringWidth(title);
+        int titleX = W / 2 - titleW / 2;
+        int titleY = 126;
+
+        // Diffuse glow (multiple offset shadows)
+        for (int gi = 6; gi >= 1; gi--) {
+            float glowT = (float)(0.5 + 0.5 * Math.sin(tick * 0.06f));
+            int gAlpha  = (int)((7 + 9 * glowT) * (7 - gi));
+            int gOff    = gi * 3;
+            g.setColor(new Color(255, 50, 70, Math.min(255, gAlpha)));
+            g.drawString(title, titleX - gOff + (int) glitchOffX, titleY + gOff);
+            g.drawString(title, titleX + gOff + (int) glitchOffX, titleY - gOff);
+        }
+
+        // Chromatic aberration glitch
+        if (glitchTimer > 0) {
+            g.setColor(new Color(0, 220, 255, 75));
+            g.drawString(title, titleX - 3 + (int) glitchOffX, titleY);
+            g.setColor(new Color(255, 40, 80, 75));
+            g.drawString(title, titleX + 3 + (int) glitchOffX, titleY);
+            // Horizontal tear strip
+            int tearY = titleY - 28 + rng.nextInt(42);
+            g.setColor(new Color(255, 255, 255, 35 + rng.nextInt(35)));
+            g.fillRect(titleX - 8, tearY, titleW + 16, 2 + rng.nextInt(4));
+        }
+
+        // Solid title
+        drawShadowText(g, title, titleX + (int) glitchOffX, titleY,
+                       new Color(255, 85, 95), new Color(105, 0, 10));
+
+        // Shimmer sweep left→right
+        float shimmerPos = (tick % 110) / 110f;
+        int shimX = (int)(titleX + shimmerPos * (titleW + 40)) - 20;
+        g.setPaint(new GradientPaint(
+            shimX, 0, new Color(255, 255, 255, 0),
+            shimX + 38, 0, new Color(255, 230, 255, 85)));
+        g.setFont(new Font("Courier New", Font.BOLD, 58));
+        g.drawString(title, titleX + (int) glitchOffX, titleY);
+        g.setPaint(null);
+
+        // ── 7. Subtitle ───────────────────────────────────────
+        g.setFont(new Font("Courier New", Font.PLAIN, 15));
+        g.setColor(new Color(190, 190, 215, (int)(175 + 60 * Math.sin(tick * 0.04f))));
+        String sub = "A normal platformer.  Keep calm and keep on going!";
+        g.drawString(sub, W / 2 - g.getFontMetrics().stringWidth(sub) / 2, 160);
+
+        // ── 8. Player with pulsing halo + orbiting stars ──────
+        int charX = W / 2 - 7, charY = 183;
+
+        // Expanding ring aura
+        for (int ri = 0; ri < 3; ri++) {
+            float phase = (tick * 0.045f + ri * 2.1f) % (float)(Math.PI * 2);
+            float r = 20f + 15f * (float)Math.sin(phase);
+            float a = 0.4f - 0.35f * ((float)Math.sin(phase) * 0.5f + 0.5f);
+            g.setColor(new Color(155, 90, 255, (int)(a * 255)));
+            g.setStroke(new BasicStroke(1.4f));
+            g.drawOval((int)(charX + playerW / 2f - r),
+                       (int)(charY + playerH / 2f - r),
+                       (int)(r * 2), (int)(r * 2));
+            g.setStroke(new BasicStroke(1f));
+        }
+        // Soft disc glow
+        float haloR = 34f + 6f * (float)Math.sin(tick * 0.07f);
+        g.setColor(new Color(125, 75, 215, 32));
+        g.fillOval((int)(charX + playerW / 2f - haloR),
+                   (int)(charY + playerH / 2f - haloR),
+                   (int)(haloR * 2), (int)(haloR * 2));
+
+        // 5 orbiting sparkle dots
+        for (int oi = 0; oi < 5; oi++) {
+            double angle = tick * 0.03 + oi * (Math.PI * 2 / 5);
+            int ox = (int)(charX + playerW / 2f + 33 * Math.cos(angle));
+            int oy = (int)(charY + playerH / 2f + 27 * Math.sin(angle));
+            float bright = (float)(0.6 + 0.4 * Math.sin(tick * 0.1 + oi));
+            g.setColor(new Color(255, 230, 120, (int)(bright * 200)));
+            int ss = (int)(3 + 2 * bright);
+            g.fillOval(ox - ss / 2, oy - ss / 2, ss, ss);
+        }
+
+        drawPlayerChar(g, charX, charY, true, (tick / 8) % 4);
+
+        // ── 9. Menu options with animated selection bar ───────
+        int optBaseY = 284;
+        int optSpacing = 54;
+        for (int i = 0; i < MENU_OPTIONS.length; i++) {
+            boolean sel = (menuSel == i);
+            int oy = optBaseY + i * optSpacing;
+
+            if (sel) {
+                // Breathing fill
+                float sweep = (float)((Math.sin(tick * 0.09f) + 1) * 0.5f);
+                int barX = W / 2 - 148;
+                g.setPaint(new GradientPaint(
+                    barX, oy - 27, new Color(255, 200, 60, 0),
+                    barX + (int)(296 * sweep) + 1, oy - 27, new Color(255, 200, 60, 48)));
+                g.fillRoundRect(barX, oy - 29, 296, 38, 10, 10);
+                g.setPaint(null);
+                // Border
+                g.setColor(new Color(255, 200, 60, 85));
+                g.setStroke(new BasicStroke(1.7f));
+                g.drawRoundRect(barX, oy - 29, 296, 38, 10, 10);
+                g.setStroke(new BasicStroke(1f));
+                // Left accent pip
+                g.setColor(new Color(255, 200, 60));
+                g.fillRect(barX - 6, oy - 12, 4, 22);
+            }
+
+            g.setFont(new Font("Courier New", Font.BOLD, sel ? 26 : 22));
+            Color col = sel ? new Color(255, 212, 80) : new Color(152, 142, 192);
+            // Text shadow
+            g.setColor(new Color(0, 0, 0, 80));
+            g.drawString(MENU_OPTIONS[i],
+                         W / 2 - g.getFontMetrics().stringWidth(MENU_OPTIONS[i]) / 2 + 2,
+                         oy + 2);
+            g.setColor(col);
+            g.drawString(MENU_OPTIONS[i],
+                         W / 2 - g.getFontMetrics().stringWidth(MENU_OPTIONS[i]) / 2,
+                         oy);
+        }
+
+        // ── 10. Scrolling tip ticker ──────────────────────────
+        String[] tickers = {
+            "  ✦  A/D or ←→ to move   ",
+            "  ✦  SPACE/W/↑ to jump   ",
+            "  ✦  R to restart level   ",
+            "  ✦  ESC to pause   ",
+            "  ✦  Complete levels to unlock more   ",
+            "  ✦  Watch out for chasing spikes!   ",
+            "  ✦  Invisible platforms sparkle faintly   ",
+            "  ✦  Cyan platforms launch you high   ",
+            "  ✦  Fake platforms crumble on contact   ",
         };
-        for(int i = 0; i < legend.length; i++) {
-            g.setColor(new Color(180,150,200));
-            g.drawString(legend[i], W/2-g.getFontMetrics().stringWidth(legend[i])/2, 450+i*18);
+        StringBuilder tb = new StringBuilder();
+        for (String s : tickers) tb.append(s);
+        String fullTicker = tb.toString() + tb.toString();
+
+        g.setColor(new Color(0, 0, 0, 110));
+        g.fillRect(0, H - 44, W, 44);
+        g.setColor(new Color(80, 50, 140, 150));
+        g.setStroke(new BasicStroke(1f));
+        g.drawLine(0, H - 44, W, H - 44);
+
+        g.setFont(new Font("Courier New", Font.PLAIN, 12));
+        int textLen = g.getFontMetrics().stringWidth(fullTicker);
+        int offset = ((tickerOffset % textLen) + textLen) % textLen;
+        g.setColor(new Color(175, 155, 215));
+        g.setClip(0, H - 44, W, 44);
+        g.drawString(fullTicker, -offset, H - 24);
+        g.drawString(fullTicker, -offset + textLen, H - 24);
+        g.setClip(null);
+
+        // Controls hint above ticker
+        g.setFont(new Font("Courier New", Font.PLAIN, 11));
+        g.setColor(new Color(135, 125, 162));
+        String ctrl = "↑↓  Navigate     ENTER  Confirm";
+        g.drawString(ctrl, W / 2 - g.getFontMetrics().stringWidth(ctrl) / 2, H - 47);
+
+        // ── 11. Legend pills ──────────────────────────────────
+        String[] legend = { "Red crumble = Fake", "Cyan ↑↑ = Bouncy",
+                             "Sparkle = Invisible", "Red trail = Chasing" };
+        int pillY = 456;
+        g.setFont(new Font("Courier New", Font.PLAIN, 11));
+        int pillTotalW = 0;
+        int[] pillWidths = new int[legend.length];
+        for (int i = 0; i < legend.length; i++) {
+            pillWidths[i] = g.getFontMetrics().stringWidth(legend[i]) + 16;
+            pillTotalW += pillWidths[i] + (i < legend.length - 1 ? 8 : 0);
+        }
+        int pillX = W / 2 - pillTotalW / 2;
+        for (int i = 0; i < legend.length; i++) {
+            g.setColor(new Color(55, 38, 95, 135));
+            g.fillRoundRect(pillX, pillY - 14, pillWidths[i], 20, 8, 8);
+            g.setColor(new Color(115, 85, 175, 170));
+            g.setStroke(new BasicStroke(1f));
+            g.drawRoundRect(pillX, pillY - 14, pillWidths[i], 20, 8, 8);
+            g.setColor(new Color(188, 168, 218));
+            g.drawString(legend[i], pillX + 8, pillY);
+            pillX += pillWidths[i] + 8;
         }
     }
 
-    // ── LEVEL SELECT SCREEN ───────────────────────────────────
+    void drawCornerFlourishMenu(Graphics2D g, int cx, int cy, boolean flipX, boolean flipY) {
+        AffineTransform old = g.getTransform();
+        g.translate(cx, cy);
+        if (flipX) g.scale(-1, 1);
+        if (flipY) g.scale(1, -1);
+
+        float pulse = 0.5f + 0.5f * (float) Math.sin(tick * 0.03f);
+
+        // Outer L-bracket
+        g.setColor(new Color(155, 95, 255, (int)(58 + 38 * pulse)));
+        g.setStroke(new BasicStroke(1.8f));
+        g.drawLine(8, 8, 8, 52);
+        g.drawLine(8, 8, 52, 8);
+        g.setStroke(new BasicStroke(1f));
+        // Inner L-bracket
+        g.setColor(new Color(195, 145, 255, (int)(28 + 18 * pulse)));
+        g.setStroke(new BasicStroke(1f));
+        g.drawLine(14, 14, 14, 40);
+        g.drawLine(14, 14, 40, 14);
+        // Tick marks
+        g.setColor(new Color(200, 160, 255, (int)(50 + 30 * pulse)));
+        g.drawLine(8, 30, 14, 30);
+        g.drawLine(30, 8, 30, 14);
+        g.setStroke(new BasicStroke(1f));
+        // Corner dot
+        g.setColor(new Color(215, 175, 255, (int)(135 + 100 * pulse)));
+        g.fillOval(4, 4, 8, 8);
+        g.setColor(new Color(255, 245, 255, 195));
+        g.fillOval(6, 6, 4, 4);
+
+        g.setTransform(old);
+    }
+
+    // ── LEVEL SELECT ─────────────────────────────────────────
     void drawLevelSelect(Graphics2D g) {
         float t = tick * 0.01f;
         Color c1 = new Color((int)(15+8*Math.sin(t)),(int)(20+10*Math.sin(t+1)),(int)(35+12*Math.sin(t+2)));
@@ -1100,17 +1362,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         };
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  GAME — NIGHTTIME PARALLAX BACKGROUND + GAMEPLAY
-    // ══════════════════════════════════════════════════════════
+    // ── GAME WORLD ───────────────────────────────────────────
     void drawGame(Graphics2D g) {
         int cx = (int)camX;
 
-        // ── 1. Sky gradient — deep indigo to midnight blue ──────
         g.setPaint(new GradientPaint(0, 0, new Color(8, 8, 35), 0, H, new Color(20, 18, 55)));
         g.fillRect(0, 0, W, H);
 
-        // ── 2. Moon (fixed in screen-space, top-right) ──────────
         int moonX = W - 130, moonY = 45;
         for (int gi = 4; gi >= 1; gi--) {
             int gr = gi * 14;
@@ -1129,7 +1387,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.drawArc(moonX + 4, moonY + 4, 52, 52, 40, 120);
         g.setStroke(new BasicStroke(1f));
 
-        // ── 3. Stars ─────────────────────────────────────────────
         for (int i = 0; i < 90; i++) {
             int sx = (((i * 137 + i * 29) % 4000) - (int)(cx * 0.05f) % 4000 + 8000) % W;
             int sy = (i * 61 + (i % 7) * 13) % (H - 120);
@@ -1151,7 +1408,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.fillRect(sx, sy, 1, 1);
         }
 
-        // ── 4. Distant city silhouette (scroll 20%) ─────────────
         {
             int off1 = (int)(cx * 0.20f);
             int[] buildingHeights = {70, 110, 80, 130, 60, 100, 90, 75, 120, 95, 65, 140, 85, 70, 105};
@@ -1190,7 +1446,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── 5. Mid city silhouette (scroll 40%) ─────────────────
         {
             int off2 = (int)(cx * 0.40f);
             int[] midHeights = {55, 90, 45, 75, 100, 60, 80, 50, 95, 70, 85, 40, 110, 65};
@@ -1221,7 +1476,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── 6. Tree line silhouette (scroll 30%) ────────────────
         {
             int off3 = (int)(cx * 0.30f);
             g.setColor(new Color(12, 10, 28));
@@ -1240,7 +1494,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── 7. Ground strip ───────────────────────────────────────
         g.setPaint(new GradientPaint(0, H - 55, new Color(12, 8, 25), 0, H, new Color(6, 4, 15)));
         g.fillRect(0, H - 55, W, 55);
         for (int fi = 0; fi < 3; fi++) {
@@ -1248,7 +1501,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.fillRect(0, H - 60 - fi * 8, W, 12);
         }
 
-        // ── 8. Moon ambient bloom ─────────────────────────────────
         float[] bloomFractions = {0f, 1f};
         Color[] bloomColors = {new Color(80, 90, 40, 18), new Color(0, 0, 0, 0)};
         g.setPaint(new RadialGradientPaint(moonX + 30, moonY + 30, 160, bloomFractions, bloomColors));
@@ -1259,7 +1511,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         for(Platform p : platforms) {
             int rx = p.x - cx;
             if(rx + p.w < -10 || rx > W + 10) continue;
-
             if(p.invisible) {
                 if(p.revealTimer_active) {
                     g.setColor(new Color(180,180,255,180));
@@ -1276,7 +1527,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 }
                 continue;
             }
-
             if(p.fake && p.fakeTriggered) {
                 float crumble = Math.min(1f, p.fakeTimer / 25f);
                 g.setColor(new Color((int)(40 + crumble*180), (int)(25*(1-crumble)), 10));
@@ -1377,7 +1627,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if(currentLevel == 0 && activeTutCard != null) drawTutorialCard(g, activeTutCard);
     }
 
-    // ── PAUSE MENU ────────────────────────────────────────────
+    // ── PAUSE MENU ───────────────────────────────────────────
     void drawPauseMenu(Graphics2D g) {
         g.setColor(new Color(0,0,0,170));
         g.fillRect(0,0,W,H);
@@ -1573,7 +1823,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── PLAYER CHARACTER ──────────────────────────────────────
+    // ── PLAYER CHARACTER ─────────────────────────────────────
     void drawPlayerChar(Graphics2D g, int x, int y, boolean right, int frame) {
         int legSwing = (frame % 2 == 0) ? 4 : -4;
         boolean moving = Math.abs(pvx) > 0.5f;
@@ -1642,7 +1892,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── CANNON ────────────────────────────────────────────────
+    // ── CANNON ───────────────────────────────────────────────
     void drawCannon(Graphics2D g, int x, int y, boolean right) {
         g.setColor(new Color(55,35,15));
         g.fillRect(x-5, y+22, 40, 18);
@@ -1687,7 +1937,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── GOAL ──────────────────────────────────────────────────
+    // ── GOAL ─────────────────────────────────────────────────
     void drawGoal(Graphics2D g, int x, int y) {
         float pulse = 0.5f + 0.5f*(float)Math.sin(tick*0.07f);
         float spin = tick * 0.04f;
@@ -1756,7 +2006,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         };
     }
 
-    // ── DEATH SCREEN ──────────────────────────────────────────
+    // ── DEATH SCREEN ─────────────────────────────────────────
     void drawDeathScreen(Graphics2D g) {
         g.setColor(new Color(0,0,0,160)); g.fillRect(0,0,W,H);
         int pw=500, ph=220, panX=W/2-pw/2, panY=H/2-ph/2;
@@ -1787,7 +2037,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── WIN LEVEL ─────────────────────────────────────────────
+    // ── WIN LEVEL ────────────────────────────────────────────
     void drawWinLevel(Graphics2D g) {
         g.setColor(new Color(0,0,0,120)); g.fillRect(0,0,W,H);
         int pw=440, ph=160, panX=W/2-pw/2, panY=H/2-ph/2-30;
@@ -1812,7 +2062,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.drawString("Loading next level...", panX+20, panY+116);
     }
 
-    // ── WIN GAME ──────────────────────────────────────────────
+    // ── WIN GAME ─────────────────────────────────────────────
     void drawWinGame(Graphics2D g) {
         float t = tick * 0.015f;
         g.setPaint(new GradientPaint(0,0,
@@ -1870,9 +2120,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setColor(main);   g.drawString(text, x, y);
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  KEY HANDLING
-    // ══════════════════════════════════════════════════════════
+    // ── KEY HANDLING ─────────────────────────────────────────
     @Override
     public void keyPressed(KeyEvent e) {
         int k = e.getKeyCode();
@@ -1881,11 +2129,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             if(k==KeyEvent.VK_DOWN || k==KeyEvent.VK_S) menuSel = Math.min(2, menuSel+1);
             if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
                 switch(menuSel) {
-                    case 0 -> {
-                        // ── WIPE TRANSITION instead of instant switch ──
-                        currentLevel=0; totalScore=0; deaths=0;
-                        beginWipeToLevel(0);
-                    }
+                    case 0 -> { currentLevel=0; totalScore=0; deaths=0; beginWipeToLevel(0); }
                     case 1 -> { levelSelectSel=0; state=State.LEVEL_SELECT; }
                     case 2 -> System.exit(0);
                 }
@@ -1904,7 +2148,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             if(k==KeyEvent.VK_ESCAPE) state=State.MENU;
             return;
         }
-        if(state == State.TRANSITIONING) return;   // swallow all input during wipe
+        if(state == State.TRANSITIONING) return;
         if(state == State.WIN_GAME) {
             if(k==KeyEvent.VK_ESCAPE) { state=State.MENU; particles.clear(); }
             return;
