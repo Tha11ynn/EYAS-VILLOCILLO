@@ -209,9 +209,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         timer.start();
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  LEVEL BUILDING
-    // ══════════════════════════════════════════════════════════
     void startLevel(int lvl) {
         platforms.clear(); spikes.clear(); cannons.clear();
         cannonballs.clear(); particles.clear(); bodyParts.clear();
@@ -498,9 +495,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         spikes.add(s); return s;
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  GAME LOOP
-    // ══════════════════════════════════════════════════════════
     @Override
     public void actionPerformed(ActionEvent e) {
         tick++;
@@ -824,9 +818,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  RENDERING
-    // ══════════════════════════════════════════════════════════
     @Override
     protected void paintComponent(Graphics g0) {
         super.paintComponent(g0);
@@ -846,7 +837,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── WIPE TRANSITION ──────────────────────────────────────
     void drawWipeTransition(Graphics2D g) {
         float progress = easeInOut((float)wipeTimer / WIPE_TICKS);
         int edgeX = (int)(W * progress);
@@ -958,10 +948,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ══════════════════════════════════════════════════════════
-    //  ENHANCED MENU
-    // ══════════════════════════════════════════════════════════
-
     void initMenuParticles() {
         for (int i = 0; i < menuParticleX.length; i++) {
             menuParticleX[i]  = rng.nextFloat() * W;
@@ -999,7 +985,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         float t = tick * 0.01f;
 
-        // ── 1. Deep animated background gradient ─────────────
         Color bg1 = new Color(
             (int)(10 + 8 * Math.sin(t)),
             (int)(3  + 4 * Math.sin(t + 1)),
@@ -1011,43 +996,36 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setPaint(new GradientPaint(0, 0, bg1, W, H, bg2));
         g.fillRect(0, 0, W, H);
 
-        // Subtle vignette
         float[] vFrac = {0f, 0.4f, 1f};
         Color[] vCol  = {new Color(0,0,0,0), new Color(0,0,0,0), new Color(0,0,0,120)};
         g.setPaint(new RadialGradientPaint(W/2f, H/2f, W*0.75f, vFrac, vCol));
         g.fillRect(0, 0, W, H);
         g.setPaint(null);
 
-        // ── 2. CRT scanlines ─────────────────────────────────
         for (int sy = 0; sy < H; sy += 4) {
             g.setColor(new Color(0, 0, 0, 26));
             g.fillRect(0, sy, W, 2);
         }
 
-        // ── 3. Floating ambient particles ────────────────────
         for (int i = 0; i < menuParticleX.length; i++) {
             float life = (float)(0.5 + 0.5 * Math.sin(tick * 0.04f + i * 0.53f));
             int   alpha = (int)(40 + 120 * life);
             float sz    = menuParticleSz[i] * (0.7f + 0.3f * life);
             int hue = (menuParticleHue[i] + tick / 3) % 360;
             Color pc = Color.getHSBColor(hue / 360f, 0.6f, 1.0f);
-            // Outer glow
             g.setColor(new Color(pc.getRed(), pc.getGreen(), pc.getBlue(), alpha / 4));
             g.fillOval((int)(menuParticleX[i] - sz * 1.8f), (int)(menuParticleY[i] - sz * 1.8f),
                        (int)(sz * 3.6f), (int)(sz * 3.6f));
-            // Core dot
             g.setColor(new Color(pc.getRed(), pc.getGreen(), pc.getBlue(), alpha));
             g.fillOval((int)(menuParticleX[i] - sz / 2), (int)(menuParticleY[i] - sz / 2),
-                       (int)sz, (int)sz);
+                    (int)sz, (int)sz);
         }
 
-        // ── 4. Corner bracket flourishes ─────────────────────
         drawCornerFlourishMenu(g, 0, 0, false, false);
         drawCornerFlourishMenu(g, W, 0, true,  false);
         drawCornerFlourishMenu(g, 0, H, false, true);
         drawCornerFlourishMenu(g, W, H, true,  true);
 
-        // ── 5. Horizontal divider lines ───────────────────────
         float lineAlpha = 0.35f + 0.15f * (float)Math.sin(tick * 0.05f);
         g.setColor(new Color(120, 60, 220, (int)(lineAlpha * 255)));
         g.setStroke(new BasicStroke(1.2f));
@@ -1057,14 +1035,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.drawLine(30, 158, W - 30, 158);
         g.setStroke(new BasicStroke(1f));
 
-        // ── 6. TITLE — glow rings + glitch + shimmer ─────────
         g.setFont(new Font("Courier New", Font.BOLD, 58));
         String title = "i   LOST";
         int titleW = g.getFontMetrics().stringWidth(title);
         int titleX = W / 2 - titleW / 2;
         int titleY = 126;
 
-        // Diffuse glow (multiple offset shadows)
         for (int gi = 6; gi >= 1; gi--) {
             float glowT = (float)(0.5 + 0.5 * Math.sin(tick * 0.06f));
             int gAlpha  = (int)((7 + 9 * glowT) * (7 - gi));
@@ -1074,23 +1050,19 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.drawString(title, titleX + gOff + (int) glitchOffX, titleY - gOff);
         }
 
-        // Chromatic aberration glitch
         if (glitchTimer > 0) {
             g.setColor(new Color(0, 220, 255, 75));
             g.drawString(title, titleX - 3 + (int) glitchOffX, titleY);
             g.setColor(new Color(255, 40, 80, 75));
             g.drawString(title, titleX + 3 + (int) glitchOffX, titleY);
-            // Horizontal tear strip
             int tearY = titleY - 28 + rng.nextInt(42);
             g.setColor(new Color(255, 255, 255, 35 + rng.nextInt(35)));
             g.fillRect(titleX - 8, tearY, titleW + 16, 2 + rng.nextInt(4));
         }
 
-        // Solid title
         drawShadowText(g, title, titleX + (int) glitchOffX, titleY,
-                       new Color(255, 85, 95), new Color(105, 0, 10));
+                    new Color(255, 85, 95), new Color(105, 0, 10));
 
-        // Shimmer sweep left→right
         float shimmerPos = (tick % 110) / 110f;
         int shimX = (int)(titleX + shimmerPos * (titleW + 40)) - 20;
         g.setPaint(new GradientPaint(
@@ -1100,16 +1072,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.drawString(title, titleX + (int) glitchOffX, titleY);
         g.setPaint(null);
 
-        // ── 7. Subtitle ───────────────────────────────────────
         g.setFont(new Font("Courier New", Font.PLAIN, 15));
         g.setColor(new Color(190, 190, 215, (int)(175 + 60 * Math.sin(tick * 0.04f))));
         String sub = "A normal platformer.  Keep calm and keep on going!";
         g.drawString(sub, W / 2 - g.getFontMetrics().stringWidth(sub) / 2, 160);
 
-        // ── 8. Player with pulsing halo + orbiting stars ──────
         int charX = W / 2 - 7, charY = 183;
 
-        // Expanding ring aura
         for (int ri = 0; ri < 3; ri++) {
             float phase = (tick * 0.045f + ri * 2.1f) % (float)(Math.PI * 2);
             float r = 20f + 15f * (float)Math.sin(phase);
@@ -1117,18 +1086,16 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.setColor(new Color(155, 90, 255, (int)(a * 255)));
             g.setStroke(new BasicStroke(1.4f));
             g.drawOval((int)(charX + playerW / 2f - r),
-                       (int)(charY + playerH / 2f - r),
+                    (int)(charY + playerH / 2f - r),
                        (int)(r * 2), (int)(r * 2));
             g.setStroke(new BasicStroke(1f));
         }
-        // Soft disc glow
         float haloR = 34f + 6f * (float)Math.sin(tick * 0.07f);
         g.setColor(new Color(125, 75, 215, 32));
         g.fillOval((int)(charX + playerW / 2f - haloR),
-                   (int)(charY + playerH / 2f - haloR),
+                (int)(charY + playerH / 2f - haloR),
                    (int)(haloR * 2), (int)(haloR * 2));
 
-        // 5 orbiting sparkle dots
         for (int oi = 0; oi < 5; oi++) {
             double angle = tick * 0.03 + oi * (Math.PI * 2 / 5);
             int ox = (int)(charX + playerW / 2f + 33 * Math.cos(angle));
@@ -1141,7 +1108,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         drawPlayerChar(g, charX, charY, true, (tick / 8) % 4);
 
-        // ── 9. Menu options with animated selection bar ───────
         int optBaseY = 284;
         int optSpacing = 54;
         for (int i = 0; i < MENU_OPTIONS.length; i++) {
@@ -1149,7 +1115,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             int oy = optBaseY + i * optSpacing;
 
             if (sel) {
-                // Breathing fill
                 float sweep = (float)((Math.sin(tick * 0.09f) + 1) * 0.5f);
                 int barX = W / 2 - 148;
                 g.setPaint(new GradientPaint(
@@ -1157,30 +1122,27 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                     barX + (int)(296 * sweep) + 1, oy - 27, new Color(255, 200, 60, 48)));
                 g.fillRoundRect(barX, oy - 29, 296, 38, 10, 10);
                 g.setPaint(null);
-                // Border
                 g.setColor(new Color(255, 200, 60, 85));
                 g.setStroke(new BasicStroke(1.7f));
                 g.drawRoundRect(barX, oy - 29, 296, 38, 10, 10);
                 g.setStroke(new BasicStroke(1f));
-                // Left accent pip
                 g.setColor(new Color(255, 200, 60));
                 g.fillRect(barX - 6, oy - 12, 4, 22);
             }
 
             g.setFont(new Font("Courier New", Font.BOLD, sel ? 26 : 22));
             Color col = sel ? new Color(255, 212, 80) : new Color(152, 142, 192);
-            // Text shadow
             g.setColor(new Color(0, 0, 0, 80));
             g.drawString(MENU_OPTIONS[i],
-                         W / 2 - g.getFontMetrics().stringWidth(MENU_OPTIONS[i]) / 2 + 2,
-                         oy + 2);
+                        W / 2 - g.getFontMetrics().stringWidth(MENU_OPTIONS[i]) / 2 + 2,
+                        oy + 2);
             g.setColor(col);
             g.drawString(MENU_OPTIONS[i],
-                         W / 2 - g.getFontMetrics().stringWidth(MENU_OPTIONS[i]) / 2,
-                         oy);
+                        W / 2 - g.getFontMetrics().stringWidth(MENU_OPTIONS[i]) / 2,
+                        oy);
         }
 
-        // ── 10. Scrolling tip ticker ──────────────────────────
+        // ── Scrolling tip ticker ──────────────────────────────
         String[] tickers = {
             "  ✦  A/D or ←→ to move   ",
             "  ✦  SPACE/W/↑ to jump   ",
@@ -1211,15 +1173,20 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.drawString(fullTicker, -offset + textLen, H - 24);
         g.setClip(null);
 
-        // Controls hint above ticker
+        // ── Navigate/confirm hint with scrolling animation ────
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
-        g.setColor(new Color(135, 125, 162));
         String ctrl = "↑↓  Navigate     ENTER  Confirm";
-        g.drawString(ctrl, W / 2 - g.getFontMetrics().stringWidth(ctrl) / 2, H - 47);
+        int ctrlLen = g.getFontMetrics().stringWidth(ctrl);
+        int ctrlOffset = ((tickerOffset % ctrlLen) + ctrlLen) % ctrlLen;
+        g.setColor(new Color(135, 125, 162));
+        g.setClip(0, H - 50, W, 20);
+        g.drawString(ctrl, -ctrlOffset + W / 2 - ctrlLen / 2, H - 47);
+        g.drawString(ctrl, -ctrlOffset + W / 2 - ctrlLen / 2 + ctrlLen, H - 47);
+        g.setClip(null);
 
-        // ── 11. Legend pills ──────────────────────────────────
+        // ── Legend pills ──────────────────────────────────────
         String[] legend = { "Red crumble = Fake", "Cyan ↑↑ = Bouncy",
-                             "Sparkle = Invisible", "Red trail = Chasing" };
+                            "Sparkle = Invisible", "Red trail = Chasing" };
         int pillY = 456;
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
         int pillTotalW = 0;
@@ -1249,23 +1216,19 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         float pulse = 0.5f + 0.5f * (float) Math.sin(tick * 0.03f);
 
-        // Outer L-bracket
         g.setColor(new Color(155, 95, 255, (int)(58 + 38 * pulse)));
         g.setStroke(new BasicStroke(1.8f));
         g.drawLine(8, 8, 8, 52);
         g.drawLine(8, 8, 52, 8);
         g.setStroke(new BasicStroke(1f));
-        // Inner L-bracket
         g.setColor(new Color(195, 145, 255, (int)(28 + 18 * pulse)));
         g.setStroke(new BasicStroke(1f));
         g.drawLine(14, 14, 14, 40);
         g.drawLine(14, 14, 40, 14);
-        // Tick marks
         g.setColor(new Color(200, 160, 255, (int)(50 + 30 * pulse)));
         g.drawLine(8, 30, 14, 30);
         g.drawLine(30, 8, 30, 14);
         g.setStroke(new BasicStroke(1f));
-        // Corner dot
         g.setColor(new Color(215, 175, 255, (int)(135 + 100 * pulse)));
         g.fillOval(4, 4, 8, 8);
         g.setColor(new Color(255, 245, 255, 195));
@@ -1274,7 +1237,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setTransform(old);
     }
 
-    // ── LEVEL SELECT ─────────────────────────────────────────
     void drawLevelSelect(Graphics2D g) {
         float t = tick * 0.01f;
         Color c1 = new Color((int)(15+8*Math.sin(t)),(int)(20+10*Math.sin(t+1)),(int)(35+12*Math.sin(t+2)));
@@ -1362,7 +1324,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         };
     }
 
-    // ── GAME WORLD ───────────────────────────────────────────
     void drawGame(Graphics2D g) {
         int cx = (int)camX;
 
@@ -1627,7 +1588,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if(currentLevel == 0 && activeTutCard != null) drawTutorialCard(g, activeTutCard);
     }
 
-    // ── PAUSE MENU ───────────────────────────────────────────
     void drawPauseMenu(Graphics2D g) {
         g.setColor(new Color(0,0,0,170));
         g.fillRect(0,0,W,H);
@@ -1823,7 +1783,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── PLAYER CHARACTER ─────────────────────────────────────
     void drawPlayerChar(Graphics2D g, int x, int y, boolean right, int frame) {
         int legSwing = (frame % 2 == 0) ? 4 : -4;
         boolean moving = Math.abs(pvx) > 0.5f;
@@ -1892,7 +1851,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── CANNON ───────────────────────────────────────────────
     void drawCannon(Graphics2D g, int x, int y, boolean right) {
         g.setColor(new Color(55,35,15));
         g.fillRect(x-5, y+22, 40, 18);
@@ -1937,7 +1895,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── GOAL ─────────────────────────────────────────────────
     void drawGoal(Graphics2D g, int x, int y) {
         float pulse = 0.5f + 0.5f*(float)Math.sin(tick*0.07f);
         float spin = tick * 0.04f;
@@ -2006,7 +1963,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         };
     }
 
-    // ── DEATH SCREEN ─────────────────────────────────────────
     void drawDeathScreen(Graphics2D g) {
         g.setColor(new Color(0,0,0,160)); g.fillRect(0,0,W,H);
         int pw=500, ph=220, panX=W/2-pw/2, panY=H/2-ph/2;
@@ -2037,7 +1993,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ── WIN LEVEL ────────────────────────────────────────────
     void drawWinLevel(Graphics2D g) {
         g.setColor(new Color(0,0,0,120)); g.fillRect(0,0,W,H);
         int pw=440, ph=160, panX=W/2-pw/2, panY=H/2-ph/2-30;
@@ -2062,7 +2017,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.drawString("Loading next level...", panX+20, panY+116);
     }
 
-    // ── WIN GAME ─────────────────────────────────────────────
     void drawWinGame(Graphics2D g) {
         float t = tick * 0.015f;
         g.setPaint(new GradientPaint(0,0,
@@ -2120,7 +2074,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setColor(main);   g.drawString(text, x, y);
     }
 
-    // ── KEY HANDLING ─────────────────────────────────────────
     @Override
     public void keyPressed(KeyEvent e) {
         int k = e.getKeyCode();
