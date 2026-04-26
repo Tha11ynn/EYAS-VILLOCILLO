@@ -23,8 +23,14 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     static final int   JUMP_BUFFER  = 8;
 
     // ── Game States ─────────────────────────────────────────
-    enum State { MENU, LEVEL_SELECT, PLAYING, PAUSED, DYING, DEAD, WIN_LEVEL, WIN_GAME }
+    enum State { MENU, LEVEL_SELECT, PLAYING, PAUSED, DYING, DEAD, WIN_LEVEL, WIN_GAME, TRANSITIONING }
     State state = State.MENU;
+
+    // ── Wipe Transition ──────────────────────────────────────
+    static final int WIPE_TICKS = 38;   // total ticks for the wipe
+    int   wipeTimer      = 0;
+    State wipeTargetState = State.PLAYING; // state to enter after wipe
+    int   wipePendingLevel = 0;            // which level to load at end of wipe
 
     int currentLevel = 0;
     int totalScore   = 0;
@@ -214,6 +220,31 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             case 4 -> buildLevel5();
         }
         state = State.PLAYING;
+    }
+
+    /** Begin a wipe-right transition that ends by loading the given level. */
+    void beginWipeToLevel(int lvl) {
+        wipePendingLevel = lvl;
+        wipeTargetState  = State.PLAYING;
+        wipeTimer        = 0;
+        // Pre-load level data so the game world is ready under the wipe
+        platforms.clear(); spikes.clear(); cannons.clear();
+        cannonballs.clear(); particles.clear(); bodyParts.clear();
+        tutCards.clear(); activeTutCard = null;
+        px=60; py=400; pvx=0; pvy=0; camX=0;
+        onGround=false; jumpConsumed=false; wasOnGround=false;
+        coyoteTimer=0; jumpBufferTimer=0;
+        winTimer=0; levelTimer=0;
+        deathAnimTimer=0; screenShakeTick=0;
+        leftDown=false; rightDown=false; jumpDown=false; jumpConsumed=false;
+        switch(lvl) {
+            case 0 -> buildLevel1();
+            case 1 -> buildLevel2();
+            case 2 -> buildLevel3();
+            case 3 -> buildLevel4();
+            case 4 -> buildLevel5();
+        }
+        state = State.TRANSITIONING;
     }
 
     void buildLevel1() {
@@ -469,6 +500,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         blinkTick++;
         if(state == State.PLAYING) update();
         if(state == State.DYING) updateDeathAnim();
+        if(state == State.TRANSITIONING) updateWipe();
         if(state == State.WIN_LEVEL) {
             winTimer++;
             if(winTimer > 100) {
@@ -481,6 +513,20 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
         repaint();
+    }
+
+    // ── Wipe update ───────────────────────────────────────────
+    void updateWipe() {
+        wipeTimer++;
+        if(wipeTimer >= WIPE_TICKS) {
+            state = wipeTargetState;
+        }
+    }
+
+    // Easing: cubic ease-in-out
+    float easeInOut(float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        return t < 0.5f ? 4*t*t*t : 1 - (float)Math.pow(-2*t+2, 3)/2;
     }
 
     void updateDeathAnim() {
@@ -790,6 +836,79 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             case DEAD         -> { drawGame(g); drawDeathScreen(g); }
             case WIN_LEVEL    -> { drawGame(g); drawWinLevel(g); }
             case WIN_GAME     -> drawWinGame(g);
+            case TRANSITIONING -> drawWipeTransition(g);
+        }
+    }
+
+    // ── WIPE-RIGHT TRANSITION ─────────────────────────────────
+    /**
+     * Draws a wipe-right transition:
+     *   LEFT side  → the game world (destination)
+     *   RIGHT side → the menu (source, sliding away)
+     *
+     * A sharp vertical edge sweeps from left to right over WIPE_TICKS frames.
+     * A thin glowing seam rides the leading edge for polish.
+     */
+    void drawWipeTransition(Graphics2D g) {
+        float progress = easeInOut((float)wipeTimer / WIPE_TICKS);
+        int edgeX = (int)(W * progress);   // how many pixels of game are revealed
+
+        // ── 1. Draw the full game world behind a clip ────────
+        Shape savedClip = g.getClip();
+        g.setClip(0, 0, edgeX, H);
+        drawGame(g);
+        g.setClip(savedClip);
+
+        // ── 2. Draw the menu on the right (translating right) ─
+        AffineTransform saved = g.getTransform();
+        // Slide the menu slightly to the right as it exits (parallax push feel)
+        int menuPushX = (int)(edgeX * 0.18f);
+        g.translate(menuPushX, 0);
+        g.setClip(edgeX - menuPushX, 0, W, H);
+        drawMenu(g);
+        g.setClip(savedClip);
+        g.setTransform(saved);
+
+        // ── 3. Glowing seam at the wipe edge ─────────────────
+        if(edgeX > 0 && edgeX < W) {
+            // Wide ambient glow (radial-style using multiple rects)
+            int[] widths = {22, 14, 8, 4, 2};
+            int[] alphas = { 18,  35, 60, 120, 220};
+            for(int i = 0; i < widths.length; i++) {
+                int hw = widths[i];
+                g.setColor(new Color(180, 220, 255, alphas[i]));
+                g.fillRect(edgeX - hw, 0, hw * 2, H);
+            }
+            // Bright core line
+            g.setColor(new Color(230, 245, 255, 255));
+            g.setStroke(new BasicStroke(1.5f));
+            g.drawLine(edgeX, 0, edgeX, H);
+            g.setStroke(new BasicStroke(1f));
+
+            // Animated sparkles riding the seam edge
+            for(int si = 0; si < 8; si++) {
+                int sy = (int)(((si * 137 + tick * 4) % (H + 30)) - 15);
+                float sparkle = (float)(0.5 + 0.5 * Math.sin(tick * 0.25f + si * 0.9f));
+                int sa = (int)(100 + 120 * sparkle);
+                int ss = (int)(4 + 4 * sparkle);
+                g.setColor(new Color(255, 255, 255, sa));
+                g.fillOval(edgeX - ss/2, sy - ss/2, ss, ss);
+            }
+        }
+
+        // ── 4. "LEVEL 1" label fades in during the last 30% ──
+        if(progress > 0.70f) {
+            float labelAlpha = (progress - 0.70f) / 0.30f;
+            int la = (int)(labelAlpha * 200);
+            g.setColor(new Color(100, 220, 255, la));
+            g.setFont(new Font("Courier New", Font.BOLD, 14));
+            String lbl = "LEVEL " + (wipePendingLevel + 1) + " — " + LEVEL_NAMES[wipePendingLevel];
+            int lw = g.getFontMetrics().stringWidth(lbl);
+            // Draw with a dark drop-shadow for legibility
+            g.setColor(new Color(0, 0, 0, la / 2));
+            g.drawString(lbl, W/2 - lw/2 + 2, H - 28);
+            g.setColor(new Color(100, 220, 255, la));
+            g.drawString(lbl, W/2 - lw/2, H - 30);
         }
     }
 
@@ -993,29 +1112,24 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         // ── 2. Moon (fixed in screen-space, top-right) ──────────
         int moonX = W - 130, moonY = 45;
-        // Layered halo glow
         for (int gi = 4; gi >= 1; gi--) {
             int gr = gi * 14;
             int ga = 10 + gi * 5;
             g.setColor(new Color(220, 230, 160, ga));
             g.fillOval(moonX - gr, moonY - gr, 60 + gr * 2, 60 + gr * 2);
         }
-        // Moon body
         g.setColor(new Color(255, 248, 195));
         g.fillOval(moonX, moonY, 60, 60);
-        // Craters
         g.setColor(new Color(230, 218, 155, 160));
         g.fillOval(moonX + 12, moonY + 10, 14, 12);
         g.fillOval(moonX + 30, moonY + 28, 10,  9);
         g.fillOval(moonX +  8, moonY + 32,  8,  7);
-        // Bright rim highlight arc
         g.setColor(new Color(255, 255, 220, 90));
         g.setStroke(new BasicStroke(2.5f));
         g.drawArc(moonX + 4, moonY + 4, 52, 52, 40, 120);
         g.setStroke(new BasicStroke(1f));
 
-        // ── 3. Stars — two parallax layers ──────────────────────
-        // Far stars (scroll at 5% camera speed)
+        // ── 3. Stars ─────────────────────────────────────────────
         for (int i = 0; i < 90; i++) {
             int sx = (((i * 137 + i * 29) % 4000) - (int)(cx * 0.05f) % 4000 + 8000) % W;
             int sy = (i * 61 + (i % 7) * 13) % (H - 120);
@@ -1024,14 +1138,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             int starSize  = (i % 11 == 0) ? 2 : 1;
             g.setColor(new Color(220, 225, 255, starAlpha));
             g.fillRect(sx, sy, starSize, starSize);
-            // Occasional cross sparkle on prominent stars
             if (i % 17 == 0) {
                 g.setColor(new Color(220, 225, 255, 55));
                 g.drawLine(sx - 3, sy, sx + 3, sy);
                 g.drawLine(sx, sy - 3, sx, sy + 3);
             }
         }
-        // Near stars (scroll at 12% camera speed)
         for (int i = 0; i < 40; i++) {
             int sx = (((i * 211 + 500) % 4200) - (int)(cx * 0.12f) % 4200 + 8400) % W;
             int sy = (i * 83 + 20) % (H / 2 - 30);
@@ -1049,14 +1161,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             for (int i = 0; i < totalBuildings; i++) {
                 int bh  = buildingHeights[i % buildingHeights.length];
                 int bx2 = ((i * bw) - (off1 % repeatW) + repeatW * 2) % repeatW;
-                // tile across screen
                 for (int tile = 0; tile <= W / repeatW + 1; tile++) {
                     int drawX = bx2 + tile * repeatW - repeatW;
                     if (drawX + bw < 0 || drawX > W) continue;
                     int by2 = H - 80 - bh;
                     g.setColor(new Color(14, 12, 30));
                     g.fillRect(drawX, by2, bw - 2, bh + 80);
-                    // Windows — deterministic warm/cool
                     for (int wy = by2 + 6; wy < H - 90; wy += 10) {
                         for (int wx2 = drawX + 5; wx2 < drawX + bw - 8; wx2 += 10) {
                             int seed = (i * 1000 + (wy - by2) * 50 + (wx2 - drawX));
@@ -1068,11 +1178,9 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                             }
                         }
                     }
-                    // Rooftop antenna every 3rd building
                     if (i % 3 == 0) {
                         g.setColor(new Color(20, 15, 40));
                         g.fillRect(drawX + bw / 2 - 1, by2 - 16, 2, 16);
-                        // Blinking red beacon
                         if ((tick / 30 + i) % 2 == 0) {
                             g.setColor(new Color(255, 60, 60, 200));
                             g.fillOval(drawX + bw / 2 - 3, by2 - 20, 6, 6);
@@ -1098,7 +1206,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                     int by2 = H - 65 - bh;
                     g.setColor(new Color(18, 15, 40));
                     g.fillRect(drawX, by2, mw - 3, bh + 65);
-                    // Windows — denser, slightly brighter (closer layer)
                     for (int wy = by2 + 5; wy < H - 75; wy += 9) {
                         for (int wx2 = drawX + 4; wx2 < drawX + mw - 5; wx2 += 9) {
                             int seed = (i * 777 + (wy - by2) * 31 + (wx2 - drawX));
@@ -1133,24 +1240,19 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── 7. Ground strip with fog glow ───────────────────────
+        // ── 7. Ground strip ───────────────────────────────────────
         g.setPaint(new GradientPaint(0, H - 55, new Color(12, 8, 25), 0, H, new Color(6, 4, 15)));
         g.fillRect(0, H - 55, W, 55);
-        // Subtle ground fog layers
         for (int fi = 0; fi < 3; fi++) {
             g.setColor(new Color(60, 40, 120, 10 - fi * 3));
             g.fillRect(0, H - 60 - fi * 8, W, 12);
         }
 
-        // ── 8. Moon ambient bloom ────────────────────────────────
+        // ── 8. Moon ambient bloom ─────────────────────────────────
         float[] bloomFractions = {0f, 1f};
         Color[] bloomColors = {new Color(80, 90, 40, 18), new Color(0, 0, 0, 0)};
         g.setPaint(new RadialGradientPaint(moonX + 30, moonY + 30, 160, bloomFractions, bloomColors));
         g.fillRect(moonX - 130, moonY - 30, 320, 220);
-
-        // ════════════════════════════════════════════════════════
-        //  GAMEPLAY RENDERING (platforms, spikes, etc.)
-        // ════════════════════════════════════════════════════════
 
         if(currentLevel == 0) drawTutorialZoneMarkers(g, cx);
 
@@ -1211,7 +1313,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // Spikes
         for(Spike s : spikes) {
             int sx = s.x - cx;
             if(sx < -30 || sx > W + 30) continue;
@@ -1234,7 +1335,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.drawLine(xp[0], yp[0], xp[1], yp[1]);
             g.setColor(s.chasing ? new Color(255,200,150,120) : new Color(240,245,255,150));
             g.fillPolygon(new int[]{sx+s.w/2-2,sx+s.w/2,sx+s.w/2+2},
-                          new int[]{s.y+s.h, s.y+3, s.y+s.h}, 3);
+                        new int[]{s.y+s.h, s.y+3, s.y+s.h}, 3);
         }
 
         for(Cannon c : cannons) {
@@ -1780,7 +1881,11 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             if(k==KeyEvent.VK_DOWN || k==KeyEvent.VK_S) menuSel = Math.min(2, menuSel+1);
             if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
                 switch(menuSel) {
-                    case 0 -> { currentLevel=0; totalScore=0; deaths=0; startLevel(0); }
+                    case 0 -> {
+                        // ── WIPE TRANSITION instead of instant switch ──
+                        currentLevel=0; totalScore=0; deaths=0;
+                        beginWipeToLevel(0);
+                    }
                     case 1 -> { levelSelectSel=0; state=State.LEVEL_SELECT; }
                     case 2 -> System.exit(0);
                 }
@@ -1792,12 +1897,14 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             if(k==KeyEvent.VK_RIGHT || k==KeyEvent.VK_D) levelSelectSel = Math.min(4, levelSelectSel+1);
             if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
                 if(levelSelectSel <= highestUnlockedLevel) {
-                    currentLevel=levelSelectSel; totalScore=0; deaths=0; startLevel(currentLevel);
+                    currentLevel=levelSelectSel; totalScore=0; deaths=0;
+                    beginWipeToLevel(currentLevel);
                 }
             }
             if(k==KeyEvent.VK_ESCAPE) state=State.MENU;
             return;
         }
+        if(state == State.TRANSITIONING) return;   // swallow all input during wipe
         if(state == State.WIN_GAME) {
             if(k==KeyEvent.VK_ESCAPE) { state=State.MENU; particles.clear(); }
             return;
@@ -1826,7 +1933,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             if(k==KeyEvent.VK_RIGHT || k==KeyEvent.VK_D) pauseLevelSel = Math.min(4, pauseLevelSel+1);
             if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
                 if(pauseLevelSel <= highestUnlockedLevel) {
-                    currentLevel=pauseLevelSel; pauseLevelSelect=false; startLevel(currentLevel);
+                    currentLevel=pauseLevelSel; pauseLevelSelect=false;
+                    beginWipeToLevel(currentLevel);
                 }
             }
             if(k==KeyEvent.VK_ESCAPE) pauseLevelSelect=false;
