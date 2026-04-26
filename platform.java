@@ -74,7 +74,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ── Menu Selection ───────────────────────────────────────
     int menuSel = 0;
     int levelSelectSel = 0;
-    static final String[] MENU_OPTIONS = { "▶  START GAME", "⊞  LEVEL SELECT", "✕  QUIT" };
+    static final String[] MENU_OPTIONS = { "START GAME", "LEVEL SELECT", "QUIT" };
     static final String[] LEVEL_NAMES = { "Tutorial", "Getting There", "Troll Central", "Almost There", "The Finale" };
 
     // ── NEW: Menu animation fields ────────────────────────────
