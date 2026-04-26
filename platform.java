@@ -1142,70 +1142,11 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                         oy);
         }
 
-        // ── Scrolling tip ticker ──────────────────────────────
-        String[] tickers = {
-            "  ✦  A/D or ←→ to move   ",
-            "  ✦  SPACE/W/↑ to jump   ",
-            "  ✦  R to restart level   ",
-            "  ✦  ESC to pause   ",
-            "  ✦  Complete levels to unlock more   ",
-            "  ✦  Watch out for chasing spikes!   ",
-            "  ✦  Invisible platforms sparkle faintly   ",
-            "  ✦  Cyan platforms launch you high   ",
-            "  ✦  Fake platforms crumble on contact   ",
-        };
-        StringBuilder tb = new StringBuilder();
-        for (String s : tickers) tb.append(s);
-        String fullTicker = tb.toString() + tb.toString();
-
-        g.setColor(new Color(0, 0, 0, 110));
-        g.fillRect(0, H - 44, W, 44);
-        g.setColor(new Color(80, 50, 140, 150));
-        g.setStroke(new BasicStroke(1f));
-        g.drawLine(0, H - 44, W, H - 44);
-
-        g.setFont(new Font("Courier New", Font.PLAIN, 12));
-        int textLen = g.getFontMetrics().stringWidth(fullTicker);
-        int offset = ((tickerOffset % textLen) + textLen) % textLen;
-        g.setColor(new Color(175, 155, 215));
-        g.setClip(0, H - 44, W, 44);
-        g.drawString(fullTicker, -offset, H - 24);
-        g.drawString(fullTicker, -offset + textLen, H - 24);
-        g.setClip(null);
-
-        // ── Navigate/confirm hint with scrolling animation ────
+        // ── Navigate/confirm hint only (no movement controls) ─
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
-        String ctrl = "↑↓  Navigate     ENTER  Confirm";
-        int ctrlLen = g.getFontMetrics().stringWidth(ctrl);
-        int ctrlOffset = ((tickerOffset % ctrlLen) + ctrlLen) % ctrlLen;
         g.setColor(new Color(135, 125, 162));
-        g.setClip(0, H - 50, W, 20);
-        g.drawString(ctrl, -ctrlOffset + W / 2 - ctrlLen / 2, H - 47);
-        g.drawString(ctrl, -ctrlOffset + W / 2 - ctrlLen / 2 + ctrlLen, H - 47);
-        g.setClip(null);
-
-        // ── Legend pills ──────────────────────────────────────
-        String[] legend = { "Red crumble = Fake", "Cyan ↑↑ = Bouncy",
-                            "Sparkle = Invisible", "Red trail = Chasing" };
-        int pillY = 456;
-        g.setFont(new Font("Courier New", Font.PLAIN, 11));
-        int pillTotalW = 0;
-        int[] pillWidths = new int[legend.length];
-        for (int i = 0; i < legend.length; i++) {
-            pillWidths[i] = g.getFontMetrics().stringWidth(legend[i]) + 16;
-            pillTotalW += pillWidths[i] + (i < legend.length - 1 ? 8 : 0);
-        }
-        int pillX = W / 2 - pillTotalW / 2;
-        for (int i = 0; i < legend.length; i++) {
-            g.setColor(new Color(55, 38, 95, 135));
-            g.fillRoundRect(pillX, pillY - 14, pillWidths[i], 20, 8, 8);
-            g.setColor(new Color(115, 85, 175, 170));
-            g.setStroke(new BasicStroke(1f));
-            g.drawRoundRect(pillX, pillY - 14, pillWidths[i], 20, 8, 8);
-            g.setColor(new Color(188, 168, 218));
-            g.drawString(legend[i], pillX + 8, pillY);
-            pillX += pillWidths[i] + 8;
-        }
+        String ctrl = "↑↓  Navigate     ENTER  Confirm";
+        g.drawString(ctrl, W / 2 - g.getFontMetrics().stringWidth(ctrl) / 2, H - 47);
     }
 
     void drawCornerFlourishMenu(Graphics2D g, int cx, int cy, boolean flipX, boolean flipY) {
