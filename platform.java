@@ -2112,12 +2112,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             {"1960","ZONE 5: BOUNCY"},{"2320","ZONE 6: MOVING"},
             {"2900","ZONE 7: INVISIBLE"},{"3180","ZONE 8: CANNONS"},
         };
-        g.setFont(new Font("Courier New", Font.BOLD, 10));
+        g.setFont(new Font("Courier New", Font.BOLD, 20));
         for(String[] z : zones) {
             int wx = Integer.parseInt(z[0]);
             int sx = wx - cx;
             if(sx < -100 || sx > W + 100) continue;
-            g.setColor(new Color(255,255,255,22));
+            g.setColor(new Color(255,255,255, 100));
             g.drawString(z[1], sx, H-60);
         }
     }
