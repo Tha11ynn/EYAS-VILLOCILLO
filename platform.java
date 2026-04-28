@@ -1,11 +1,13 @@
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
 
+import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
@@ -24,7 +26,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     static final int DEFAULT_W = 900, DEFAULT_H = 550;
     static final int LARGE_W = 1200, LARGE_H = 733;
     static int W = DEFAULT_W, H = DEFAULT_H;
-    static JFrame gameFrame; // Reference to main frame for resizing
+    static JFrame gameFrame;
 
     // ══════════════════════════════════════════════════════════════════════════
     // PHYSICS CONSTANTS
@@ -42,25 +44,31 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ══════════════════════════════════════════════════════════════════════════
     // GAME STATES
     // ══════════════════════════════════════════════════════════════════════════
-    enum State { MENU, LEVEL_SELECT, SETTINGS, PLAYING, PAUSED, DYING, DEAD, WIN_LEVEL, WIN_GAME, TRANSITIONING }
-    State state = State.MENU;
+    enum State { INTRO, INTRO_FADE_TO_MENU, MENU, LEVEL_SELECT, SETTINGS, PLAYING, PAUSED, DYING, DEAD, WIN_LEVEL, WIN_GAME, TRANSITIONING } // ══ STUDIO INTRO: added INTRO + INTRO_FADE_TO_MENU ══
+    State state = State.INTRO; // ══ STUDIO INTRO: start in INTRO ══
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ══ STUDIO INTRO FIELDS ══
+    // ══════════════════════════════════════════════════════════════════════════
+    static final int INTRO_FADE_IN   = 10;   // ticks to fade in
+    static final int INTRO_HOLD      = 40;   // ticks to hold full opacity
+    static final int INTRO_FADE_OUT  = 10;   // ticks to fade out
+    static final int INTRO_TOTAL     = INTRO_FADE_IN + INTRO_HOLD + INTRO_FADE_OUT;
+    static final int MENU_FADE_IN_TICKS = 60; // ticks to fade menu in
+    int introTimer = 0;
+    int menuFadeTimer = 0; // fade in menu after intro
+    BufferedImage studioLogo = null; // ══ STUDIO INTRO: the PNG ══
 
     // ══════════════════════════════════════════════════════════════════════════
     // SETTINGS CONFIGURATION
     // ══════════════════════════════════════════════════════════════════════════
-    
-    // --- Audio Settings ---
-    int volumeSFX = 100;           // Sound effects volume (0-100)
-    int volumeBGM = 100;           // Background music volume (0-100)
-    
-    // --- Visual Settings ---
-    int backgroundBrightness = 100;  // Background brightness (0-100)
-    int particleLevel = 2;           // 0 = Off, 1 = Reduced, 2 = Full
+    int volumeSFX = 100;
+    int volumeBGM = 100;
+    int backgroundBrightness = 100;
+    int particleLevel = 2;
     static final String[] PARTICLE_LABELS = { "OFF", "REDUCED", "FULL" };
-    
-    // --- Settings Menu Navigation ---
     int settingsSel = 0;
-    boolean settingsFromPause = false; // Track if settings opened from pause menu
+    boolean settingsFromPause = false;
     static final String[] SETTINGS_OPTIONS = { 
         "♪  SFX VOLUME", 
         "♫  BGM VOLUME", 
@@ -299,6 +307,23 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         timer = new Timer(16, this);
         timer.start();
         loadAudio();
+        loadStudioLogo(); // ══ STUDIO INTRO: load PNG ══
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ══ STUDIO INTRO: LOAD LOGO PNG ══
+    // ══════════════════════════════════════════════════════════════════════════
+    void loadStudioLogo() {
+        try {
+            URL url = getClass().getResource("/Struggle Meal studios.png");
+            if (url != null) {
+                studioLogo = ImageIO.read(url);
+            } else {
+                System.err.println("Studio logo not found: /Struggle Meal studios.png");
+            }
+        } catch (IOException ex) {
+            System.err.println("Failed to load studio logo: " + ex.getMessage());
+        }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -606,6 +631,28 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         tick++;
         dotBobTick++;
         blinkTick++;
+
+        // ══ STUDIO INTRO: tick the intro timer ══
+        if (state == State.INTRO) {
+            introTimer++;
+            if (introTimer >= INTRO_TOTAL) {
+                state = State.INTRO_FADE_TO_MENU;
+                menuFadeTimer = 0;
+            }
+        }
+        
+        // Fade in menu after intro
+        if (state == State.INTRO_FADE_TO_MENU) {
+            if (menuFadeTimer == 0) {
+                playBGM(bgmMenu); // Start music when menu becomes visible
+            }
+            menuFadeTimer++;
+            if (menuFadeTimer >= MENU_FADE_IN_TICKS) {
+                state = State.MENU;
+                menuFadeTimer = 0;
+            }
+        }
+
         if(state == State.PLAYING) update();
         if(state == State.DYING) updateDeathAnim();
         if(state == State.TRANSITIONING) updateWipe();
@@ -619,8 +666,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 if(currentLevel >= 5) {
                     state = State.WIN_GAME; 
                     playSFX(sfxWin); 
-                    stopBGM(); }
-                else startLevel(currentLevel);
+                    stopBGM();
+                } else startLevel(currentLevel);
             }
         }
         repaint();
@@ -781,7 +828,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── Cannon Logic ──────────────────────────────────────────────────
         for(Cannon c : cannons) {
             c.fireTimer++;
             if(c.fireTimer >= c.fireRate) {
@@ -812,7 +858,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
         
-        // ── Goal Logic ──────────────────────────────────────────────────
         Rectangle goalRect = new Rectangle(goalX, goalY, GOAL_W, GOAL_H);
         if(new Rectangle((int)px, (int)py, playerW, playerH).intersects(goalRect)) {
             totalScore += calcLevelScore(levelDeathsTotal);
@@ -862,14 +907,9 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         playSFX(sfxDeath);
     }
     
-    // ══════════════════════════════════════════════════════════════════════════
-    // DEATH ANIMATION SPAWNING
-    // ══════════════════════════════════════════════════════════════════════════
     void spawnDeathAnimation() {
         float cx = px + playerW / 2f;
         float cy = py + playerH / 2f;
-        
-        // Only spawn particles if particle level allows
         if (particleLevel > 0) {
             int particleCount = particleLevel == 2 ? 20 : 10;
             for(int i = 0; i < particleCount; i++) {
@@ -888,8 +928,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                     20+rng.nextInt(20), new Color(200+rng.nextInt(55),30+rng.nextInt(60),10)));
             }
         }
-        
-        // Body parts always spawn for death animation
         bodyParts.add(new BodyPart(cx-4, py-2,
             (rng.nextFloat()-0.5f)*4f, -9f-rng.nextFloat()*3f,
             0.18f+rng.nextFloat()*0.12f, 0, new Color(230,200,255)));
@@ -911,7 +949,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         bodyParts.add(new BodyPart(cx+5, py+18,
             5f+rng.nextFloat()*3f, -4f-rng.nextFloat()*2f,
             0.22f+rng.nextFloat()*0.1f, 3, new Color(180,180,220)));
-        
         if (particleLevel > 0) {
             int extraCount = particleLevel == 2 ? 8 : 4;
             for(int i = 0; i < extraCount; i++) {
@@ -979,6 +1016,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         switch(state) {
+            case INTRO        -> drawIntro(g);  // ══ STUDIO INTRO ══
+            case INTRO_FADE_TO_MENU -> drawMenuFadeIn(g); // Fade in menu
             case MENU         -> drawMenu(g);
             case LEVEL_SELECT -> drawLevelSelect(g);
             case SETTINGS     -> drawSettings(g);
@@ -990,6 +1029,112 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             case WIN_GAME     -> drawWinGame(g);
             case TRANSITIONING -> drawWipeTransition(g);
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ══ STUDIO INTRO: DRAW INTRO SPLASH ══
+    // Fade in (0–60), hold (60–180), fade out (180–240)
+    // Press any key to skip.
+    // ══════════════════════════════════════════════════════════════════════════
+    void drawIntro(Graphics2D g) {
+        // Solid black background
+        g.setColor(Color.BLACK);
+        g.fillRect(0, 0, W, H);
+
+        // Calculate alpha
+        float alpha;
+        if (introTimer < INTRO_FADE_IN) {
+            alpha = (float) introTimer / INTRO_FADE_IN;
+        } else if (introTimer < INTRO_FADE_IN + INTRO_HOLD) {
+            alpha = 1f;
+        } else {
+            float fadeProgress = (float)(introTimer - INTRO_FADE_IN - INTRO_HOLD) / INTRO_FADE_OUT;
+            alpha = 1f - fadeProgress;
+        }
+        alpha = Math.max(0f, Math.min(1f, alpha));
+
+        if (studioLogo != null) {
+            // Draw logo centered, scaled to fit nicely (max 400px wide, maintain aspect)
+            int maxW = 400, maxH = 260;
+            int imgW = studioLogo.getWidth();
+            int imgH = studioLogo.getHeight();
+            float scale = Math.min((float) maxW / imgW, (float) maxH / imgH);
+            int drawW = (int)(imgW * scale);
+            int drawH = (int)(imgH * scale);
+            int drawX = W / 2 - drawW / 2;
+            int drawY = H / 2 - drawH / 2 - 20;
+
+            // Apply alpha via AlphaComposite
+            Composite oldComp = g.getComposite();
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+            g.drawImage(studioLogo, drawX, drawY, drawW, drawH, null);
+            g.setComposite(oldComp);
+
+            // "A Struggle Meal Studios game" subtitle
+            g.setFont(new Font("Courier New", Font.PLAIN, 13));
+            g.setColor(new Color(180, 170, 210, (int)(alpha * 200)));
+            String sub = "A Struggle Meal Studios game";
+            int subW = g.getFontMetrics().stringWidth(sub);
+            g.drawString(sub, W / 2 - subW / 2, drawY + drawH + 28);
+        } else {
+            // Fallback: text-only intro if PNG missing
+            g.setFont(new Font("Courier New", Font.BOLD, 28));
+            String name = "STRUGGLE MEAL STUDIOS";
+            int nameW = g.getFontMetrics().stringWidth(name);
+            g.setColor(new Color(220, 200, 255, (int)(alpha * 255)));
+            g.drawString(name, W / 2 - nameW / 2, H / 2 - 10);
+            g.setFont(new Font("Courier New", Font.PLAIN, 13));
+            g.setColor(new Color(160, 140, 200, (int)(alpha * 200)));
+            String sub = "A Struggle Meal Studios game";
+            int subW = g.getFontMetrics().stringWidth(sub);
+            g.drawString(sub, W / 2 - subW / 2, H / 2 + 22);
+        }
+
+        // "Press any key to skip" hint — only visible first 3 seconds
+        if (introTimer < 90) {
+            float hintAlpha = alpha * 0.55f;
+            g.setFont(new Font("Courier New", Font.PLAIN, 11));
+            g.setColor(new Color(130, 120, 160, (int)(hintAlpha * 255)));
+            String skip = "Press any key to skip";
+            int skipW = g.getFontMetrics().stringWidth(skip);
+            g.drawString(skip, W / 2 - skipW / 2, H - 30);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ══ FADE IN MENU AFTER INTRO LOGO FADES OUT ══
+    // ══════════════════════════════════════════════════════════════════════════
+    void drawMenuFadeIn(Graphics2D g) {
+        // Draw the menu
+        drawMenu(g);
+        
+        // Calculate fade-in alpha: 1 at start, 0 at end
+        float fadeProgress = (float)menuFadeTimer / MENU_FADE_IN_TICKS;
+        fadeProgress = Math.max(0f, Math.min(1f, fadeProgress));
+        float alpha = 1f - fadeProgress; // Start opaque (1), fade out (0)
+        
+        // Fade overlay: black fading out
+        if (alpha > 0) {
+            g.setColor(new Color(0, 0, 0, (int)(alpha * 255)));
+            g.fillRect(0, 0, W, H);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // ══ STUDIO INTRO: WATERMARK LOGO (bottom-left corner, same as menu) ══
+    // Called from drawHUD() so it appears over gameplay at all times.
+    // ══════════════════════════════════════════════════════════════════════════
+    void drawStudioWatermark(Graphics2D g) {
+        if (studioLogo == null) return;
+        // Logo: 110px wide, maintain aspect ratio, bottom-left corner (same as menu)
+        int wmW = 110;
+        int wmH = (int)((float) studioLogo.getHeight() / studioLogo.getWidth() * wmW);
+        int wmX = 16;
+        int wmY = H - wmH - 16;
+        Composite oldComp = g.getComposite();
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.55f));
+        g.drawImage(studioLogo, wmX, wmY, wmW, wmH, null);
+        g.setComposite(oldComp);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -1151,8 +1296,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         updateMenuParticles();
 
         float t = tick * 0.01f;
-        
-        // Apply brightness multiplier to background
         float brightMult = backgroundBrightness / 100f;
 
         Color bg1 = new Color(
@@ -1177,7 +1320,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.fillRect(0, sy, W, 2);
         }
 
-        // Draw particles only if particle level allows
         if (particleLevel > 0) {
             int particleCount = particleLevel == 2 ? menuParticleX.length : menuParticleX.length / 2;
             for (int i = 0; i < particleCount; i++) {
@@ -1253,7 +1395,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         int charX = W / 2 - 7, charY = 183;
 
-        // Player character preview with rings (reduced if particles reduced)
         if (particleLevel > 0) {
             int ringCount = particleLevel == 2 ? 3 : 2;
             for (int ri = 0; ri < ringCount; ri++) {
@@ -1323,11 +1464,26 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                         oy);
         }
 
-        // Navigate/confirm hint
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
         g.setColor(new Color(135, 125, 162));
         String ctrl = "↑↓  Navigate     ENTER  Confirm";
         g.drawString(ctrl, W / 2 - g.getFontMetrics().stringWidth(ctrl) / 2, H - 47);
+        
+        // Draw studio logo in bottom-left corner of menu (bigger)
+        drawMenuStudioLogo(g);
+    }
+    
+    void drawMenuStudioLogo(Graphics2D g) {
+        if (studioLogo == null) return;
+        // Logo for menu: 110px wide, maintain aspect ratio, same style as gameplay watermark
+        int logoW = 110;
+        int logoH = (int)((float) studioLogo.getHeight() / studioLogo.getWidth() * logoW);
+        int logoX = 16;
+        int logoY = H - logoH - 16;
+        Composite oldComp = g.getComposite();
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.55f));
+        g.drawImage(studioLogo, logoX, logoY, logoW, logoH, null);
+        g.setComposite(oldComp);
     }
 
     void drawCornerFlourishMenu(Graphics2D g, int cx, int cy, boolean flipX, boolean flipY) {
@@ -1363,7 +1519,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // DRAWING - SETTINGS MENU
     // ══════════════════════════════════════════════════════════════════════════
     void drawSettings(Graphics2D g) {
-        // Draw background (same as menu)
         if (!menuParticlesInit) initMenuParticles();
         updateMenuParticles();
 
@@ -1381,20 +1536,17 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setPaint(new GradientPaint(0, 0, bg1, W, H, bg2));
         g.fillRect(0, 0, W, H);
 
-        // Vignette
         float[] vFrac = {0f, 0.4f, 1f};
         Color[] vCol  = {new Color(0,0,0,0), new Color(0,0,0,0), new Color(0,0,0,120)};
         g.setPaint(new RadialGradientPaint(W/2f, H/2f, W*0.75f, vFrac, vCol));
         g.fillRect(0, 0, W, H);
         g.setPaint(null);
 
-        // Scan lines
         for (int sy = 0; sy < H; sy += 4) {
             g.setColor(new Color(0, 0, 0, 26));
             g.fillRect(0, sy, W, 2);
         }
 
-        // Draw particles if enabled
         if (particleLevel > 0) {
             int particleCount = particleLevel == 2 ? menuParticleX.length : menuParticleX.length / 2;
             for (int i = 0; i < particleCount; i++) {
@@ -1412,48 +1564,39 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // Settings panel
         int pw = 720, ph = 480;
         int panX = W/2 - pw/2, panY = H/2 - ph/2;
 
-        // Panel shadow
         g.setColor(new Color(0,0,0,100));
         g.fillRoundRect(panX+6, panY+6, pw, ph, 20, 20);
         
-        // Panel background
         g.setPaint(new GradientPaint(panX, panY, new Color(15, 10, 35, 245), 
-                                      panX, panY+ph, new Color(25, 15, 55, 245)));
+                                    panX, panY+ph, new Color(25, 15, 55, 245)));
         g.fillRoundRect(panX, panY, pw, ph, 20, 20);
         
-        // Panel border
         g.setColor(new Color(140, 100, 220, 200));
         g.setStroke(new BasicStroke(2f));
         g.drawRoundRect(panX, panY, pw, ph, 20, 20);
         g.setStroke(new BasicStroke(1f));
 
-        // Accent bar
         g.setColor(new Color(160, 100, 255, 200));
         g.fillRoundRect(panX, panY+12, 5, ph-24, 4, 4);
 
-        // Title
         g.setFont(new Font("Courier New", Font.BOLD, 32));
         String title = "⚙  SETTINGS";
         drawShadowText(g, title, W/2 - g.getFontMetrics().stringWidth(title)/2, panY + 48,
             new Color(200, 160, 255), new Color(80, 40, 140));
 
-        // Divider line
         g.setColor(new Color(140, 100, 220, 80));
         g.fillRect(panX + 20, panY + 60, pw - 40, 1);
 
-        // Settings options
         int optStartY = panY + 95;
-        int optSpacing = 70;
+        int optSpacing = 85;
 
         for (int i = 0; i < SETTINGS_OPTIONS.length; i++) {
             boolean sel = (settingsSel == i);
             int oy = optStartY + i * optSpacing;
 
-            // Selection highlight
             if (sel) {
                 g.setColor(new Color(140, 100, 220, 50));
                 g.fillRoundRect(panX + 14, oy - 18, pw - 28, 36, 8, 8);
@@ -1461,99 +1604,61 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 g.setStroke(new BasicStroke(1.5f));
                 g.drawRoundRect(panX + 14, oy - 18, pw - 28, 36, 8, 8);
                 g.setStroke(new BasicStroke(1f));
-                
-                // Selection indicator
                 g.setColor(new Color(255, 200, 80));
                 g.setFont(new Font("Courier New", Font.BOLD, 14));
                 g.drawString("›", panX + 22, oy + 5);
             }
 
-            // Draw label
             g.setFont(new Font("Courier New", Font.BOLD, sel ? 17 : 15));
             g.setColor(sel ? new Color(255, 200, 80) : new Color(170, 150, 210));
             g.drawString(SETTINGS_OPTIONS[i], panX + 40, oy + 5);
 
-            // Draw controls based on option type
-            int controlX = panX + 250;
+            int controlX = panX + 350;
             int controlY = oy - 8;
-            int barW = 180;
+            int barW = 150;
             int barH = 12;
 
             switch (i) {
-                case 0 -> { // SFX Volume
-                    drawVolumeBar(g, controlX, controlY, barW, barH, volumeSFX, sel);
+                case 0 -> { drawVolumeBar(g, controlX, controlY, barW, barH, volumeSFX, sel);
                     g.setFont(new Font("Courier New", Font.PLAIN, 12));
                     g.setColor(new Color(200, 180, 230));
-                    g.drawString(volumeSFX + "%", controlX + barW + 8, oy + 4);
-                }
-                case 1 -> { // BGM Volume
-                    drawVolumeBar(g, controlX, controlY, barW, barH, volumeBGM, sel);
+                    g.drawString(volumeSFX + "%", controlX + barW + 8, oy + 4); }
+                case 1 -> { drawVolumeBar(g, controlX, controlY, barW, barH, volumeBGM, sel);
                     g.setFont(new Font("Courier New", Font.PLAIN, 12));
                     g.setColor(new Color(200, 180, 230));
-                    g.drawString(volumeBGM + "%", controlX + barW + 8, oy + 4);
-                }
-                case 2 -> { // Background Brightness
-                    drawVolumeBar(g, controlX, controlY, barW, barH, backgroundBrightness, sel);
+                    g.drawString(volumeBGM + "%", controlX + barW + 8, oy + 4); }
+                case 2 -> { drawVolumeBar(g, controlX, controlY, barW, barH, backgroundBrightness, sel);
                     g.setFont(new Font("Courier New", Font.PLAIN, 12));
                     g.setColor(new Color(200, 180, 230));
-                    g.drawString(backgroundBrightness + "%", controlX + barW + 8, oy + 4);
-                }
-                case 3 -> { // Particle Effects
-                    drawToggleOption(g, controlX, controlY + 4, PARTICLE_LABELS[particleLevel], sel);
-                }
-                case 4 -> { // Back button - no control needed
-                }
-            }
-
-            // Show adjustment hint for selected slider options
-            if (sel && i < 3) {
-                g.setFont(new Font("Courier New", Font.PLAIN, 10));
-                g.setColor(new Color(180, 160, 220, 180));
-                g.drawString("← / → to adjust", controlX, oy + 20);
-            } else if (sel && (i == 3 || i == 4)) {
-                g.setFont(new Font("Courier New", Font.PLAIN, 10));
-                g.setColor(new Color(180, 160, 220, 180));
-                g.drawString("← / → to change", controlX, oy + 20);
+                    g.drawString(backgroundBrightness + "%", controlX + barW + 8, oy + 4); }
+                case 3 -> { drawToggleOption(g, controlX, controlY + 4, PARTICLE_LABELS[particleLevel], sel); }
+                case 4 -> {}
             }
         }
 
-        // Navigation hint
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
         g.setColor(new Color(140, 120, 180, 180));
         String hint = "↑ ↓ : Navigate   ← → : Adjust   ESC / ENTER on Back : Return";
         g.drawString(hint, W/2 - g.getFontMetrics().stringWidth(hint)/2, panY + ph - 15);
     }
 
-    // Helper method to draw volume/slider bars
     void drawVolumeBar(Graphics2D g, int x, int y, int w, int h, int value, boolean selected) {
-        // Background
         g.setColor(new Color(60, 40, 100));
         g.fillRoundRect(x, y, w, h, 5, 5);
-        
-        // Fill
         int fillW = (int)(w * (value / 100.0));
         g.setColor(selected ? new Color(200, 140, 255) : new Color(120, 80, 180));
         g.fillRoundRect(x, y, fillW, h, 5, 5);
-        
-        // Knob
         g.setColor(selected ? new Color(255, 220, 100) : new Color(200, 170, 255));
         g.fillOval(x + fillW - 7, y - 2, 14, h + 4);
     }
 
-    // Helper method to draw toggle options
     void drawToggleOption(Graphics2D g, int x, int y, String value, boolean selected) {
         g.setFont(new Font("Courier New", Font.BOLD, 14));
-        
-        // Draw arrows
         g.setColor(selected ? new Color(255, 200, 80) : new Color(120, 100, 160));
         g.drawString("◄", x, y);
-        
-        // Draw value
         g.setColor(selected ? new Color(255, 240, 200) : new Color(180, 170, 210));
         int valueW = g.getFontMetrics().stringWidth(value);
         g.drawString(value, x + 90 - valueW/2, y);
-        
-        // Draw right arrow
         g.setColor(selected ? new Color(255, 200, 80) : new Color(120, 100, 160));
         g.drawString("►", x + 170, y);
     }
@@ -1664,7 +1769,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         int cx = (int)camX;
         float brightMult = backgroundBrightness / 100f;
 
-        // ── Animated gradient background ────────────
         float t = tick * 0.01f;
         Color bg1 = new Color(
             (int)((10 + 8 * Math.sin(t)) * brightMult),
@@ -1677,20 +1781,17 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setPaint(new GradientPaint(0, 0, bg1, W, H, bg2));
         g.fillRect(0, 0, W, H);
 
-        // ── Radial gradient overlay ────────────────
         float[] vFrac = {0f, 0.4f, 1f};
         Color[] vCol  = {new Color(0,0,0,0), new Color(0,0,0,0), new Color(0,0,0,120)};
         g.setPaint(new RadialGradientPaint(W/2f, H/2f, W*0.75f, vFrac, vCol));
         g.fillRect(0, 0, W, H);
         g.setPaint(null);
 
-        // ── Scan lines ─────────────────────────────
         for (int sy = 0; sy < H; sy += 4) {
             g.setColor(new Color(0, 0, 0, 26));
             g.fillRect(0, sy, W, 2);
         }
 
-        // ── Animated particles ─────────────────────
         if (particleLevel > 0) {
             int particleCount = particleLevel == 2 ? menuParticleX.length : menuParticleX.length / 2;
             for (int i = 0; i < particleCount; i++) {
@@ -1708,13 +1809,11 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // ── Corner flourishes ──────────────────────
         drawCornerFlourishMenu(g, 0, 0, false, false);
         drawCornerFlourishMenu(g, W, 0, true,  false);
         drawCornerFlourishMenu(g, 0, H, false, true);
         drawCornerFlourishMenu(g, W, H, true,  true);
 
-        // Moon
         int moonX = W - 130, moonY = 45;
         for (int gi = 4; gi >= 1; gi--) {
             int gr = gi * 14;
@@ -1733,7 +1832,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.drawArc(moonX + 4, moonY + 4, 52, 52, 40, 120);
         g.setStroke(new BasicStroke(1f));
 
-        // Stars
         int starCount = particleLevel == 2 ? 90 : (particleLevel == 1 ? 45 : 20);
         for (int i = 0; i < starCount; i++) {
             int sx = (((i * 137 + i * 29) % 4000) - (int)(cx * 0.05f) % 4000 + 8000) % W;
@@ -1758,7 +1856,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.fillRect(sx, sy, 1, 1);
         }
 
-        // Background buildings layer 1
         {
             int off1 = (int)(cx * 0.20f);
             int[] buildingHeights = {70, 110, 80, 130, 60, 100, 90, 75, 120, 95, 65, 140, 85, 70, 105};
@@ -1797,7 +1894,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // Background buildings layer 2
         {
             int off2 = (int)(cx * 0.40f);
             int[] midHeights = {55, 90, 45, 75, 100, 60, 80, 50, 95, 70, 85, 40, 110, 65};
@@ -1828,7 +1924,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // Background trees
         {
             int off3 = (int)(cx * 0.30f);
             g.setColor(new Color(12, 10, 28));
@@ -1847,7 +1942,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // Ground
         g.setPaint(new GradientPaint(0, H - 55, new Color(12, 8, 25), 0, H, new Color(6, 4, 15)));
         g.fillRect(0, H - 55, W, 55);
         for (int fi = 0; fi < 3; fi++) {
@@ -1855,7 +1949,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.fillRect(0, H - 60 - fi * 8, W, 12);
         }
 
-        // Moon bloom
         float[] bloomFractions = {0f, 1f};
         Color[] bloomColors = {new Color(80, 90, 40, 18), new Color(0, 0, 0, 0)};
         g.setPaint(new RadialGradientPaint(moonX + 30, moonY + 30, 160, bloomFractions, bloomColors));
@@ -1863,7 +1956,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         if(currentLevel == 0) drawTutorialZoneMarkers(g, cx);
 
-        // Draw platforms
         for(Platform p : platforms) {
             int rx = p.x - cx;
             if(rx + p.w < -10 || rx > W + 10) continue;
@@ -1919,7 +2011,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             }
         }
 
-        // Draw spikes
         for(Spike s : spikes) {
             int sx = s.x - cx;
             if(sx < -30 || sx > W + 30) continue;
@@ -1945,14 +2036,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                         new int[]{s.y+s.h, s.y+3, s.y+s.h}, 3);
         }
 
-        // Draw cannons
         for(Cannon c : cannons) {
             int ccx = c.x - cx;
             if(ccx < -60 || ccx > W + 60) continue;
             drawCannon(g, ccx, c.y, c.facingRight);
         }
 
-        // Draw cannonballs
         for(Cannonball cb : cannonballs) {
             int bx = (int)(cb.x - cx);
             if(bx < -20 || bx > W + 20) continue;
@@ -1972,14 +2061,12 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         drawGoal(g, goalX - cx, goalY);
 
-        // Draw particles
         for(Particle p : particles) {
             float alpha = (float)p.life / p.maxLife;
             g.setColor(new Color(p.color.getRed(),p.color.getGreen(),p.color.getBlue(),(int)(alpha*255)));
             g.fillOval((int)(p.x-cx)-3,(int)p.y-3,6,6);
         }
 
-        // Draw player
         if(state == State.PLAYING || state == State.PAUSED)
             drawPlayerChar(g, (int)(px-cx), (int)py, facingRight, onGround ? (tick/6)%4 : 1);
 
@@ -2279,24 +2366,16 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     void drawGoal(Graphics2D g, int x, int y) {
         float pulse = 0.5f + 0.5f * (float) Math.sin(tick * 0.07f);
         float spin = tick * 0.04f;
-        
-        // Center of the goal
         int cx = x + GOAL_W / 2;
         int cy = y + GOAL_H / 2;
-        
-        // Outer glow rings - draw centered on the goal
         for (int ri = 3; ri >= 1; ri--) {
             int r = ri * 14;
             int alpha = (int) (15 + 12 * pulse) * (4 - ri);
             g.setColor(new Color(60, 210, 100, alpha));
             g.fillOval(cx - GOAL_W / 2 - r, cy - GOAL_H / 2 - r, GOAL_W + r * 2, GOAL_H + r * 2);
         }
-        
-        // Dark inner fill
         g.setColor(new Color(10, 80, 30));
         g.fillOval(x, y, GOAL_W, GOAL_H);
-        
-        // Orbiting dots
         for (int i = 0; i < 6; i++) {
             double a = spin + i * Math.PI / 3.0;
             int ix = cx + (int) (14 * Math.cos(a));
@@ -2305,22 +2384,16 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.setColor(new Color(50, 200, 100, alpha2));
             g.fillOval(ix - 6, iy - 6, 12, 12);
         }
-        
-        // Inner glow layers
         g.setColor(new Color(50, 200, 100, (int) (100 + 60 * pulse)));
         g.fillOval(x + 6, y + 8, GOAL_W - 12, GOAL_H - 16);
         g.setColor(new Color(150, 255, 180, (int) (80 + 60 * pulse)));
         g.fillOval(x + 10, y + 14, GOAL_W - 20, GOAL_H - 26);
-        
-        // Outline
         g.setColor(new Color(0, 210, 90));
         g.setStroke(new BasicStroke(3f));
         g.drawOval(x, y, GOAL_W, GOAL_H);
         g.setColor(new Color(100, 255, 160, (int) (160 + 60 * pulse)));
         g.setStroke(new BasicStroke(1.5f));
         g.drawOval(x + 4, y + 4, GOAL_W - 8, GOAL_H - 8);
-        
-        // Sparkle dots
         g.setStroke(new BasicStroke(1f));
         for (int i = 0; i < 5; i++) {
             double sa = spin * 2 + i * Math.PI * 0.4;
@@ -2330,13 +2403,14 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             g.setColor(new Color(180, 255, 200, salpha));
             g.fillOval(spx - 2, spy - 2, 4, 4);
         }
-        
-        // Label
         g.setColor(Color.WHITE);
         g.setFont(new Font("Courier New", Font.BOLD, 9));
         g.drawString("EXIT", x + 5, y + GOAL_H / 2 + 4);
     }
 
+    // ══════════════════════════════════════════════════════════════════════════
+    // DRAWING - HUD  (includes watermark)
+    // ══════════════════════════════════════════════════════════════════════════
     void drawHUD(Graphics2D g) {
         g.setColor(new Color(0,0,0,150)); g.fillRoundRect(8,8,220,72,10,10);
         g.setFont(new Font("Courier New", Font.BOLD, 13));
@@ -2493,8 +2567,21 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     @Override
     public void keyPressed(KeyEvent e) {
         int k = e.getKeyCode();
+
+        // ══ STUDIO INTRO: any key skips the intro ══
+        if (state == State.INTRO) {
+            introTimer = INTRO_TOTAL; // jump to end, triggers transition on next tick
+            return;
+        }
         
-        // ── Main Menu Input ──────────────────────────────────────────────
+        // ══ Skip intro fade-to-menu by pressing any key ══
+        if (state == State.INTRO_FADE_TO_MENU) {
+            state = State.MENU;
+            playBGM(bgmMenu);
+            menuFadeTimer = 0;
+            return;
+        }
+        
         if(state == State.MENU) {
             playBGM(bgmMenu);
             if(k==KeyEvent.VK_UP   || k==KeyEvent.VK_W) menuSel = Math.max(0, menuSel-1);
@@ -2510,7 +2597,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             return;
         }
         
-        // ── Level Select Input ───────────────────────────────────────────
         if(state == State.LEVEL_SELECT) {
             if(k==KeyEvent.VK_LEFT  || k==KeyEvent.VK_A) levelSelectSel = Math.max(0, levelSelectSel-1);
             if(k==KeyEvent.VK_RIGHT || k==KeyEvent.VK_D) levelSelectSel = Math.min(4, levelSelectSel+1);
@@ -2524,7 +2610,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             return;
         }
         
-        // ── Settings Menu Input ──────────────────────────────────────────
         if(state == State.SETTINGS) {
             handleSettingsKey(k);
             return;
@@ -2532,17 +2617,14 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         
         if(state == State.TRANSITIONING) return;
         
-        // ── Win Game Input ───────────────────────────────────────────────
         if(state == State.WIN_GAME) {
             if(k==KeyEvent.VK_ESCAPE) { playBGM(bgmMenu); state=State.MENU; particles.clear(); }
             return;
         }
         
-        // ── Pause Menu Input ─────────────────────────────────────────────
         if(state == State.PAUSED) { handlePauseKey(k); return; }
         if(state == State.DYING) return;
         
-        // ── Gameplay Input ───────────────────────────────────────────────
         if(k==KeyEvent.VK_A     || k==KeyEvent.VK_LEFT)  leftDown = true;
         if(k==KeyEvent.VK_D     || k==KeyEvent.VK_RIGHT) rightDown = true;
         if(k==KeyEvent.VK_SPACE || k==KeyEvent.VK_UP || k==KeyEvent.VK_W) jumpDown = true;
@@ -2559,52 +2641,27 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // SETTINGS INPUT HANDLING
-    // ══════════════════════════════════════════════════════════════════════════
     void handleSettingsKey(int k) {
-        // Navigation
         if(k==KeyEvent.VK_UP   || k==KeyEvent.VK_W)
             settingsSel = (settingsSel - 1 + SETTINGS_OPTIONS.length) % SETTINGS_OPTIONS.length;
         if(k==KeyEvent.VK_DOWN || k==KeyEvent.VK_S)
             settingsSel = (settingsSel + 1) % SETTINGS_OPTIONS.length;
-        
-        // Adjustment based on selected option
         switch(settingsSel) {
-            case 0 -> { // SFX Volume
-                if(k==KeyEvent.VK_LEFT)  volumeSFX = Math.max(0, volumeSFX - 5);
-                if(k==KeyEvent.VK_RIGHT) volumeSFX = Math.min(100, volumeSFX + 5);
-            }
-            case 1 -> { // BGM Volume
-                if(k==KeyEvent.VK_LEFT)  volumeBGM = Math.max(0, volumeBGM - 5);
-                if(k==KeyEvent.VK_RIGHT) volumeBGM = Math.min(100, volumeBGM + 5);
-            }
-            case 2 -> { // Background Brightness
-                if(k==KeyEvent.VK_LEFT)  backgroundBrightness = Math.max(0, backgroundBrightness - 5);
-                if(k==KeyEvent.VK_RIGHT) backgroundBrightness = Math.min(100, backgroundBrightness + 5);
-            }
-            case 3 -> { // Particle Effects
-                if(k==KeyEvent.VK_LEFT)  particleLevel = Math.max(0, particleLevel - 1);
-                if(k==KeyEvent.VK_RIGHT) particleLevel = Math.min(2, particleLevel + 1);
-            }
-            case 4 -> { // Back
-                if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
-                    state = settingsFromPause ? State.PAUSED : State.MENU;
-                }
-            }
+            case 0 -> { if(k==KeyEvent.VK_LEFT)  volumeSFX = Math.max(0, volumeSFX - 5);
+                        if(k==KeyEvent.VK_RIGHT) volumeSFX = Math.min(100, volumeSFX + 5); }
+            case 1 -> { if(k==KeyEvent.VK_LEFT)  volumeBGM = Math.max(0, volumeBGM - 5);
+                        if(k==KeyEvent.VK_RIGHT) volumeBGM = Math.min(100, volumeBGM + 5); }
+            case 2 -> { if(k==KeyEvent.VK_LEFT)  backgroundBrightness = Math.max(0, backgroundBrightness - 5);
+                        if(k==KeyEvent.VK_RIGHT) backgroundBrightness = Math.min(100, backgroundBrightness + 5); }
+            case 3 -> { if(k==KeyEvent.VK_LEFT)  particleLevel = Math.max(0, particleLevel - 1);
+                        if(k==KeyEvent.VK_RIGHT) particleLevel = Math.min(2, particleLevel + 1); }
+            case 4 -> { if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE)
+                            state = settingsFromPause ? State.PAUSED : State.MENU; }
         }
-        
-        // ESC to go back
-        if(k==KeyEvent.VK_ESCAPE) {
-            state = settingsFromPause ? State.PAUSED : State.MENU;
-        }
-        
+        if(k==KeyEvent.VK_ESCAPE) state = settingsFromPause ? State.PAUSED : State.MENU;
         applyVolume();
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // PAUSE MENU INPUT HANDLING
-    // ══════════════════════════════════════════════════════════════════════════
     void handlePauseKey(int k) {
         if(pauseLevelSelect) {
             if(k==KeyEvent.VK_LEFT  || k==KeyEvent.VK_A) pauseLevelSel = Math.max(0, pauseLevelSel-1);
@@ -2618,7 +2675,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             if(k==KeyEvent.VK_ESCAPE) pauseLevelSelect=false;
             return;
         }
-        
         if(k==KeyEvent.VK_UP   || k==KeyEvent.VK_W)
             pauseSel = (pauseSel-1+PAUSE_OPTIONS.length) % PAUSE_OPTIONS.length;
         if(k==KeyEvent.VK_DOWN || k==KeyEvent.VK_S)
@@ -2635,10 +2691,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if(k==KeyEvent.VK_ESCAPE) state=State.PLAYING;
     }
 
-
-    void applyVolume() {
-    applyVolumeToAll();
-    }
+    void applyVolume() { applyVolumeToAll(); }
 
     // ══════════════════════════════════════════════════════════════════════════
     // AUDIO SYSTEM
@@ -2666,29 +2719,24 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
 
     void playSFX(Clip clip) {
-        if (clip == null || particleLevel == 0 && volumeSFX == 0) return; // respect mute
-        if (volumeSFX == 0) return;
-        clip.stop();
-        clip.setFramePosition(0);
-        setClipVolume(clip, volumeSFX);
-        clip.start();
+        if (clip == null || volumeSFX == 0) return;
+        clip.stop(); clip.setFramePosition(0);
+        setClipVolume(clip, volumeSFX); clip.start();
     }
 
     void playBGM(Clip clip) {
-        if (currentBGM == clip) return; // already playing this track
+        if (currentBGM == clip) return;
         stopBGM();
         if (clip == null || volumeBGM == 0) return;
         currentBGM = clip;
         setClipVolume(clip, volumeBGM);
         clip.setFramePosition(0);
-        clip.loop(Clip.LOOP_CONTINUOUSLY); // ← loops automatically
+        clip.loop(Clip.LOOP_CONTINUOUSLY);
     }
 
     void stopBGM() {
         if (currentBGM != null) {
-            currentBGM.stop();
-            currentBGM.setFramePosition(0);
-            currentBGM = null;
+            currentBGM.stop(); currentBGM.setFramePosition(0); currentBGM = null;
         }
     }
 
@@ -2696,9 +2744,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if (clip == null) return;
         try {
             FloatControl gain = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
-            float dB = volumePct == 0
-                ? gain.getMinimum()
-                : 20f * (float) Math.log10(volumePct / 100.0);
+            float dB = volumePct == 0 ? gain.getMinimum() : 20f * (float) Math.log10(volumePct / 100.0);
             gain.setValue(Math.max(gain.getMinimum(), Math.min(gain.getMaximum(), dB)));
         } catch (IllegalArgumentException ignored) {}
     }
@@ -2734,7 +2780,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             gameFrame.setResizable(false);
             gameFrame.setVisible(true);
             game.requestFocusInWindow();
-            game.playBGM(game.bgmMenu);
+            // ══ STUDIO INTRO: NO bgmMenu here — intro plays in silence, menu plays after ══
         });
     }
 }
