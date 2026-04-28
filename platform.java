@@ -1,10 +1,20 @@
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Random;
+
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.FloatControl;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.UnsupportedAudioFileException;
+
 import javax.swing.*;
+import java.net.URL;
 
 public class platform extends JPanel implements ActionListener, KeyListener {
 
@@ -40,8 +50,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ══════════════════════════════════════════════════════════════════════════
     
     // --- Audio Settings ---
-    int volumeSFX = 80;           // Sound effects volume (0-100)
-    int volumeBGM = 70;           // Background music volume (0-100)
+    int volumeSFX = 100;           // Sound effects volume (0-100)
+    int volumeBGM = 100;           // Background music volume (0-100)
     
     // --- Visual Settings ---
     int backgroundBrightness = 100;  // Background brightness (0-100)
@@ -124,7 +134,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     int menuSel = 0;
     int levelSelectSel = 0;
     static final String[] MENU_OPTIONS = { "START GAME", "LEVEL SELECT", "SETTINGS", "QUIT" };
-    static final String[] LEVEL_NAMES = { "Tutorial", "Getting There", "Halfway", "Almost There", "The Finale" };
+    static final String[] LEVEL_NAMES = { "Tutorial", "Getting There", "Halfway Through", "Almost There", "The Finale" };
 
     // ══════════════════════════════════════════════════════════════════════════
     // MENU ANIMATION
@@ -271,6 +281,13 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     int blinkTick = 0;
 
     // ══════════════════════════════════════════════════════════════════════════
+    // AUDIO
+    // ══════════════════════════════════════════════════════════════════════════
+    Clip sfxJump, sfxDeath, sfxWin;
+    Clip bgmMenu, bgmGame;
+    Clip currentBGM;
+
+    // ══════════════════════════════════════════════════════════════════════════
     // CONSTRUCTOR
     // ══════════════════════════════════════════════════════════════════════════
     public platform() {
@@ -280,6 +297,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         addKeyListener(this);
         timer = new Timer(16, this);
         timer.start();
+        loadAudio();
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -303,6 +321,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             case 4 -> buildLevel5();
         }
         state = State.PLAYING;
+        playBGM(bgmGame);
     }
 
     void beginWipeToLevel(int lvl) {
@@ -326,6 +345,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             case 4 -> buildLevel5();
         }
         state = State.TRANSITIONING;
+        playBGM(bgmGame);
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -593,7 +613,10 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                     highestUnlockedLevel = Math.min(currentLevel + 1, 4);
                 }
                 currentLevel++;
-                if(currentLevel >= 5) state = State.WIN_GAME;
+                if(currentLevel >= 5) {
+                    state = State.WIN_GAME; 
+                    playSFX(sfxWin); 
+                    stopBGM(); }
                 else startLevel(currentLevel);
             }
         }
@@ -677,6 +700,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             pvy = JUMP_VEL; jumpConsumed = true;
             jumpBufferTimer = 0; coyoteTimer = 0;
             spawnDust();
+            playSFX(sfxJump);
         }
         if(!jumpDown) jumpConsumed = false;
         if(!jumpDown && pvy < -6f) pvy = Math.max(pvy + 1.2f, -6f);
@@ -832,6 +856,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         deathAnimTimer = 0; screenShakeTick = 18;
         spawnDeathAnimation();
         state = State.DYING;
+        playSFX(sfxDeath);
     }
     
     // ══════════════════════════════════════════════════════════════════════════
@@ -2454,6 +2479,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         
         // ── Main Menu Input ──────────────────────────────────────────────
         if(state == State.MENU) {
+            playBGM(bgmMenu);
             if(k==KeyEvent.VK_UP   || k==KeyEvent.VK_W) menuSel = Math.max(0, menuSel-1);
             if(k==KeyEvent.VK_DOWN || k==KeyEvent.VK_S) menuSel = Math.min(3, menuSel+1);
             if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
@@ -2491,7 +2517,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         
         // ── Win Game Input ───────────────────────────────────────────────
         if(state == State.WIN_GAME) {
-            if(k==KeyEvent.VK_ESCAPE) { state=State.MENU; particles.clear(); }
+            if(k==KeyEvent.VK_ESCAPE) { playBGM(bgmMenu); state=State.MENU; particles.clear(); }
             return;
         }
         
@@ -2511,7 +2537,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 leftDown=false; rightDown=false; jumpDown=false;
                 pauseSel=0; pauseLevelSelect=false; state=State.PAUSED;
             } else if(state==State.DEAD) {
-                state=State.MENU; particles.clear(); leftDown=rightDown=jumpDown=false;
+                state=State.MENU; playBGM(bgmMenu); particles.clear(); leftDown=rightDown=jumpDown=false;
             }
         }
     }
@@ -2555,6 +2581,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if(k==KeyEvent.VK_ESCAPE) {
             state = settingsFromPause ? State.PAUSED : State.MENU;
         }
+        
+        applyVolume();
     }
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -2584,16 +2612,85 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 case 1 -> startLevel(currentLevel);
                 case 2 -> { pauseLevelSel=currentLevel; pauseLevelSelect=true; }
                 case 3 -> { settingsSel=0; settingsFromPause=true; state=State.SETTINGS; }
-                case 4 -> { state=State.MENU; particles.clear(); leftDown=false; rightDown=false; jumpDown=false; }
+                case 4 -> { state=State.MENU; playBGM(bgmMenu); particles.clear(); leftDown=false; rightDown=false; jumpDown=false; }
             }
         }
         if(k==KeyEvent.VK_ESCAPE) state=State.PLAYING;
     }
 
 
-    void applyVolume() { 
-        // Wire up to Clip FloatControl when audio is implemented
-        // volumeSFX and volumeBGM are available for use
+    void applyVolume() {
+    applyVolumeToAll();
+    }
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // AUDIO SYSTEM
+    // ══════════════════════════════════════════════════════════════════════════
+    void loadAudio() {
+        sfxJump  = loadClip("jump.wav");    
+        sfxDeath = loadClip("death.wav");   
+        sfxWin   = loadClip("win.wav");     
+        bgmMenu  = loadClip("menu.wav");    
+        bgmGame  = loadClip("game.wav");    
+    }
+
+    Clip loadClip(String filename) {
+        try {
+            URL url = getClass().getResource("/" + filename);
+            if (url == null) { System.err.println("Audio not found: " + filename); return null; }
+            AudioInputStream ais = AudioSystem.getAudioInputStream(url);
+            Clip clip = AudioSystem.getClip();
+            clip.open(ais);
+            return clip;
+        } catch (UnsupportedAudioFileException | IOException | LineUnavailableException ex) {
+            System.err.println("Failed to load audio: " + filename);
+            return null;
+        }
+    }
+
+    void playSFX(Clip clip) {
+        if (clip == null || particleLevel == 0 && volumeSFX == 0) return; // respect mute
+        if (volumeSFX == 0) return;
+        clip.stop();
+        clip.setFramePosition(0);
+        setClipVolume(clip, volumeSFX);
+        clip.start();
+    }
+
+    void playBGM(Clip clip) {
+        if (currentBGM == clip) return; // already playing this track
+        stopBGM();
+        if (clip == null || volumeBGM == 0) return;
+        currentBGM = clip;
+        setClipVolume(clip, volumeBGM);
+        clip.setFramePosition(0);
+        clip.loop(Clip.LOOP_CONTINUOUSLY); // ← loops automatically
+    }
+
+    void stopBGM() {
+        if (currentBGM != null) {
+            currentBGM.stop();
+            currentBGM.setFramePosition(0);
+            currentBGM = null;
+        }
+    }
+
+    void setClipVolume(Clip clip, int volumePct) {
+        if (clip == null) return;
+        try {
+            FloatControl gain = (FloatControl) clip.getControl(FloatControl.Type.MASTER_GAIN);
+            float dB = volumePct == 0
+                ? gain.getMinimum()
+                : 20f * (float) Math.log10(volumePct / 100.0);
+            gain.setValue(Math.max(gain.getMinimum(), Math.min(gain.getMaximum(), dB)));
+        } catch (IllegalArgumentException ignored) {}
+    }
+
+    void applyVolumeToAll() {
+        setClipVolume(sfxJump,  volumeSFX);
+        setClipVolume(sfxDeath, volumeSFX);
+        setClipVolume(sfxWin,   volumeSFX);
+        if (currentBGM != null) setClipVolume(currentBGM, volumeBGM);
     }
 
     @Override
@@ -2620,6 +2717,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             gameFrame.setResizable(false);
             gameFrame.setVisible(true);
             game.requestFocusInWindow();
+            game.playBGM(game.bgmMenu);
         });
     }
 }
