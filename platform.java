@@ -83,6 +83,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     int currentLevel = 0;
     int totalScore   = 0;
     int deaths       = 0;
+    int levelDeathsTotal = 0;
     int highestUnlockedLevel = 0;
 
     // ══════════════════════════════════════════════════════════════════════════
@@ -307,6 +308,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         platforms.clear(); spikes.clear(); cannons.clear();
         cannonballs.clear(); particles.clear(); bodyParts.clear();
         tutCards.clear(); activeTutCard = null;
+        if (lvl != currentLevel) levelDeathsTotal = 0;
         px=60; py=400; pvx=0; pvy=0; camX=0;
         onGround=false; jumpConsumed=false; wasOnGround=false;
         coyoteTimer=0; jumpBufferTimer=0;
@@ -325,6 +327,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
 
     void beginWipeToLevel(int lvl) {
+        levelDeathsTotal = 0; 
         wipePendingLevel = lvl;
         wipeTargetState  = State.PLAYING;
         wipeTimer        = 0;
@@ -812,7 +815,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         // ── Goal Logic ──────────────────────────────────────────────────
         Rectangle goalRect = new Rectangle(goalX, goalY, GOAL_W, GOAL_H);
         if(new Rectangle((int)px, (int)py, playerW, playerH).intersects(goalRect)) {
-            totalScore += (5 - currentLevel) * 300 + 500;
+            totalScore += calcLevelScore(levelDeathsTotal);
             spawnWinBurst();
             state = State.WIN_LEVEL;
         }
@@ -843,7 +846,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ══════════════════════════════════════════════════════════════════════════
     void killPlayer(String l1, String l2, String tag) {
         if(state == State.DEAD || state == State.DYING) return;
-        deaths++;
+        deaths++; levelDeathsTotal++;
         if(l1 != null && l2 != null && tag != null) {
             currentDeathMsg = new String[]{l1, l2, tag};
         } else {
@@ -2463,6 +2466,20 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         else if(deaths<60)  return "Getting there";
         else if(deaths<100) return "Determination";
         else                return "Never give up!";
+    }
+
+    int calcLevelScore(int d) {
+        if      (d <= 4)  return 2000;
+        else if (d <= 10) return 1900;
+        else if (d <= 15) return 1800;
+        else if (d <= 20) return 1700;
+        else if (d <= 25) return 1600;
+        else if (d <= 30) return 1500;
+        else if (d <= 35) return 1400;
+        else if (d <= 40) return 1300;
+        else if (d <= 45) return 1200;
+        else if (d <= 50) return 1100;
+        else              return 1000;
     }
 
     void drawShadowText(Graphics2D g, String text, int x, int y, Color main, Color shadow) {
