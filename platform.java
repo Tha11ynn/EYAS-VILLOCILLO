@@ -124,7 +124,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     int menuSel = 0;
     int levelSelectSel = 0;
     static final String[] MENU_OPTIONS = { "START GAME", "LEVEL SELECT", "SETTINGS", "QUIT" };
-    static final String[] LEVEL_NAMES = { "Tutorial", "Getting There", "Troll Central", "Almost There", "The Finale" };
+    static final String[] LEVEL_NAMES = { "Tutorial", "Getting There", "Halfway", "Almost There", "The Finale" };
 
     // ══════════════════════════════════════════════════════════════════════════
     // MENU ANIMATION
@@ -1385,7 +1385,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
 
         // Settings panel
-        int pw = 520, ph = 380;
+        int pw = 720, ph = 480;
         int panX = W/2 - pw/2, panY = H/2 - ph/2;
 
         // Panel shadow
@@ -1419,7 +1419,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         // Settings options
         int optStartY = panY + 95;
-        int optSpacing = 48;
+        int optSpacing = 70;
 
         for (int i = 0; i < SETTINGS_OPTIONS.length; i++) {
             boolean sel = (settingsSel == i);
@@ -1454,19 +1454,19 @@ public class platform extends JPanel implements ActionListener, KeyListener {
             switch (i) {
                 case 0 -> { // SFX Volume
                     drawVolumeBar(g, controlX, controlY, barW, barH, volumeSFX, sel);
-                    g.setFont(new Font("Courier New", Font.PLAIN, 11));
+                    g.setFont(new Font("Courier New", Font.PLAIN, 12));
                     g.setColor(new Color(200, 180, 230));
                     g.drawString(volumeSFX + "%", controlX + barW + 8, oy + 4);
                 }
                 case 1 -> { // BGM Volume
                     drawVolumeBar(g, controlX, controlY, barW, barH, volumeBGM, sel);
-                    g.setFont(new Font("Courier New", Font.PLAIN, 11));
+                    g.setFont(new Font("Courier New", Font.PLAIN, 12));
                     g.setColor(new Color(200, 180, 230));
                     g.drawString(volumeBGM + "%", controlX + barW + 8, oy + 4);
                 }
                 case 2 -> { // Background Brightness
                     drawVolumeBar(g, controlX, controlY, barW, barH, backgroundBrightness, sel);
-                    g.setFont(new Font("Courier New", Font.PLAIN, 11));
+                    g.setFont(new Font("Courier New", Font.PLAIN, 12));
                     g.setColor(new Color(200, 180, 230));
                     g.drawString(backgroundBrightness + "%", controlX + barW + 8, oy + 4);
                 }
@@ -2249,46 +2249,64 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
 
     void drawGoal(Graphics2D g, int x, int y) {
-        float pulse = 0.5f + 0.5f*(float)Math.sin(tick*0.07f);
+        float pulse = 0.5f + 0.5f * (float) Math.sin(tick * 0.07f);
         float spin = tick * 0.04f;
-        for(int ri = 3; ri >= 1; ri--) {
-            int r = ri*14;
-            int alpha = (int)(15+12*pulse)*(4-ri);
-            g.setColor(new Color(60,210,100,alpha));
-            g.fillOval(x-r+GOAL_W/2, y-r+GOAL_H/2, GOAL_W+r*2, GOAL_H+r*2);
+        
+        // Center of the goal
+        int cx = x + GOAL_W / 2;
+        int cy = y + GOAL_H / 2;
+        
+        // Outer glow rings - draw centered on the goal
+        for (int ri = 3; ri >= 1; ri--) {
+            int r = ri * 14;
+            int alpha = (int) (15 + 12 * pulse) * (4 - ri);
+            g.setColor(new Color(60, 210, 100, alpha));
+            g.fillOval(cx - GOAL_W / 2 - r, cy - GOAL_H / 2 - r, GOAL_W + r * 2, GOAL_H + r * 2);
         }
-        g.setColor(new Color(10,80,30));
+        
+        // Dark inner fill
+        g.setColor(new Color(10, 80, 30));
         g.fillOval(x, y, GOAL_W, GOAL_H);
-        for(int i = 0; i < 6; i++) {
-            double a = spin + i*Math.PI/3.0;
-            int ix = x+GOAL_W/2+(int)(14*Math.cos(a));
-            int iy = y+GOAL_H/2+(int)(18*Math.sin(a));
-            int alpha2 = (int)(40+30*Math.sin(spin*3+i));
-            g.setColor(new Color(50,200,100,alpha2));
-            g.fillOval(ix-6, iy-6, 12, 12);
+        
+        // Orbiting dots
+        for (int i = 0; i < 6; i++) {
+            double a = spin + i * Math.PI / 3.0;
+            int ix = cx + (int) (14 * Math.cos(a));
+            int iy = cy + (int) (18 * Math.sin(a));
+            int alpha2 = (int) (40 + 30 * Math.sin(spin * 3 + i));
+            g.setColor(new Color(50, 200, 100, alpha2));
+            g.fillOval(ix - 6, iy - 6, 12, 12);
         }
-        g.setColor(new Color(50,200,100,(int)(100+60*pulse)));
-        g.fillOval(x+6, y+8, GOAL_W-12, GOAL_H-16);
-        g.setColor(new Color(150,255,180,(int)(80+60*pulse)));
-        g.fillOval(x+10, y+14, GOAL_W-20, GOAL_H-26);
-        g.setColor(new Color(0,210,90));
+        
+        // Inner glow layers
+        g.setColor(new Color(50, 200, 100, (int) (100 + 60 * pulse)));
+        g.fillOval(x + 6, y + 8, GOAL_W - 12, GOAL_H - 16);
+        g.setColor(new Color(150, 255, 180, (int) (80 + 60 * pulse)));
+        g.fillOval(x + 10, y + 14, GOAL_W - 20, GOAL_H - 26);
+        
+        // Outline
+        g.setColor(new Color(0, 210, 90));
         g.setStroke(new BasicStroke(3f));
         g.drawOval(x, y, GOAL_W, GOAL_H);
-        g.setColor(new Color(100,255,160,(int)(160+60*pulse)));
+        g.setColor(new Color(100, 255, 160, (int) (160 + 60 * pulse)));
         g.setStroke(new BasicStroke(1.5f));
-        g.drawOval(x+4, y+4, GOAL_W-8, GOAL_H-8);
+        g.drawOval(x + 4, y + 4, GOAL_W - 8, GOAL_H - 8);
+        
+        // Sparkle dots
         g.setStroke(new BasicStroke(1f));
-        for(int i = 0; i < 5; i++) {
-            double sa = spin*2 + i*Math.PI*0.4;
-            int spx = x+GOAL_W/2+(int)(22*Math.cos(sa));
-            int spy = y+GOAL_H/2+(int)(28*Math.sin(sa));
-            int salpha = (int)(80+60*Math.sin(spin*4+i*1.2));
-            g.setColor(new Color(180,255,200,salpha));
-            g.fillOval(spx-2, spy-2, 4, 4);
+        for (int i = 0; i < 5; i++) {
+            double sa = spin * 2 + i * Math.PI * 0.4;
+            int spx = cx + (int) (22 * Math.cos(sa));
+            int spy = cy + (int) (28 * Math.sin(sa));
+            int salpha = (int) (80 + 60 * Math.sin(spin * 4 + i * 1.2));
+            g.setColor(new Color(180, 255, 200, salpha));
+            g.fillOval(spx - 2, spy - 2, 4, 4);
         }
+        
+        // Label
         g.setColor(Color.WHITE);
         g.setFont(new Font("Courier New", Font.BOLD, 9));
-        g.drawString("EXIT", x+5, y+GOAL_H/2+4);
+        g.drawString("EXIT", x + 5, y + GOAL_H / 2 + 4);
     }
 
     void drawHUD(Graphics2D g) {
@@ -2593,7 +2611,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ══════════════════════════════════════════════════════════════════════════
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            gameFrame = new JFrame("i LOST — Troll Platformer");
+            gameFrame = new JFrame("i LOST");
             platform game = new platform();
             gameFrame.add(game);
             gameFrame.pack();
