@@ -48,13 +48,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     int particleLevel = 2;           // 0 = Off, 1 = Reduced, 2 = Full
     static final String[] PARTICLE_LABELS = { "OFF", "REDUCED", "FULL" };
     
-    // --- Screen Size Settings ---
-    int screenSizeOption = 0;     // 0 = Default, 1 = Large, 2 = Fullscreen
-    static final String[] SCREEN_SIZE_LABELS = { "DEFAULT (900x550)", "LARGE (1200x733)", "FULLSCREEN" };
-    boolean wasFullscreen = false;
-    Dimension windowedSize = new Dimension(DEFAULT_W, DEFAULT_H);
-    Point windowedLocation = null;
-    
     // --- Settings Menu Navigation ---
     int settingsSel = 0;
     boolean settingsFromPause = false; // Track if settings opened from pause menu
@@ -63,7 +56,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         "♫  BGM VOLUME", 
         "☀  BACKGROUND BRIGHTNESS",
         "✦  PARTICLE EFFECTS",
-        "⊞  SCREEN SIZE",
         "←  BACK"
     };
 
@@ -1481,10 +1473,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 case 3 -> { // Particle Effects
                     drawToggleOption(g, controlX, controlY + 4, PARTICLE_LABELS[particleLevel], sel);
                 }
-                case 4 -> { // Screen Size
-                    drawToggleOption(g, controlX, controlY + 4, SCREEN_SIZE_LABELS[screenSizeOption], sel);
-                }
-                case 5 -> { // Back button - no control needed
+                case 4 -> { // Back button - no control needed
                 }
             }
 
@@ -2537,11 +2526,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                 if(k==KeyEvent.VK_LEFT)  particleLevel = Math.max(0, particleLevel - 1);
                 if(k==KeyEvent.VK_RIGHT) particleLevel = Math.min(2, particleLevel + 1);
             }
-            case 4 -> { // Screen Size
-                if(k==KeyEvent.VK_LEFT)  { screenSizeOption = Math.max(0, screenSizeOption - 1); applyScreenSize(); }
-                if(k==KeyEvent.VK_RIGHT) { screenSizeOption = Math.min(2, screenSizeOption + 1); applyScreenSize(); }
-            }
-            case 5 -> { // Back
+            case 4 -> { // Back
                 if(k==KeyEvent.VK_ENTER || k==KeyEvent.VK_SPACE) {
                     state = settingsFromPause ? State.PAUSED : State.MENU;
                 }
@@ -2587,64 +2572,6 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if(k==KeyEvent.VK_ESCAPE) state=State.PLAYING;
     }
 
-    // ══════════════════════════════════════════════════════════════════════════
-    // SCREEN SIZE APPLICATION
-    // ══════════════════════════════════════════════════════════════════════════
-    void applyScreenSize() {
-        if(gameFrame == null) return;
-        
-        GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-        
-        switch(screenSizeOption) {
-            case 0 -> { // Default windowed
-                if(gameFrame.isUndecorated()) {
-                    gameFrame.dispose();
-                    gameFrame.setUndecorated(false);
-                    gameFrame.setVisible(true);
-                }
-                W = DEFAULT_W;
-                H = DEFAULT_H;
-                setPreferredSize(new Dimension(W, H));
-                gameFrame.pack();
-                gameFrame.setLocationRelativeTo(null);
-                wasFullscreen = false;
-            }
-            case 1 -> { // Large windowed
-                if(gameFrame.isUndecorated()) {
-                    gameFrame.dispose();
-                    gameFrame.setUndecorated(false);
-                    gameFrame.setVisible(true);
-                }
-                W = LARGE_W;
-                H = LARGE_H;
-                setPreferredSize(new Dimension(W, H));
-                gameFrame.pack();
-                gameFrame.setLocationRelativeTo(null);
-                wasFullscreen = false;
-            }
-            case 2 -> { // Fullscreen
-                if(!wasFullscreen) {
-                    windowedSize = gameFrame.getSize();
-                    windowedLocation = gameFrame.getLocation();
-                }
-                gameFrame.dispose();
-                gameFrame.setUndecorated(true);
-                DisplayMode dm = gd.getDisplayMode();
-                W = dm.getWidth();
-                H = dm.getHeight();
-                setPreferredSize(new Dimension(W, H));
-                gameFrame.setSize(W, H);
-                gameFrame.setLocation(0, 0);
-                gameFrame.setVisible(true);
-                wasFullscreen = true;
-            }
-        }
-        
-        // Reinitialize menu particles for new size
-        menuParticlesInit = false;
-        
-        requestFocusInWindow();
-    }
 
     void applyVolume() { 
         // Wire up to Clip FloatControl when audio is implemented
