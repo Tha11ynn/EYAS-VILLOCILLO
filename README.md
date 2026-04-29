@@ -1,8 +1,16 @@
 # Eyas-Villocillo
 
+
+
 ## Game Title & Description
 
-**Eyas-Villocillo** is a dynamic 2D platformer game developed in Java using Swing. The game challenges players to navigate through increasingly difficult levels filled with various platform types, hazards, and obstacles. Test your reflexes, timing, and problem-solving skills as you make your way through five unique levels, from the beginner-friendly Tutorial to the challenging final level.
+**i LOST** is a dynamic 2D platformer game developed in Java using Swing. The game challenges players to navigate through increasingly difficult levels filled with various platform types, hazards, and obstacles. Test your reflexes, timing, and problem-solving skills as you make your way through five unique levels, from the beginner-friendly Tutorial to the challenging final level.
+
+### Disclaimer:
+
+This game uses AI generation in the following:
+- Coding
+- Background Music
 
 ### Features:
 - **5 Unique Levels**: Tutorial, Getting There, Troll Central, Almost There, and The Finale
@@ -104,41 +112,16 @@
 
 ---
 
-## Game Tips
-
-- **Use Coyote Time**: You can still jump briefly after leaving a platform edge
-- **Jump Buffering**: Press jump before landing to execute the jump immediately upon contact
-- **Watch the Colors**: Different platform colors indicate different properties:
-  - Red sparkles = Invisible (be careful!)
-  - Cyan with ↑↑ = Bouncy (gains extra height)
-  - Red crumbled look = Fake (will break when you land)
-  - Red trail effect = Chasing hazards (run!)
-- **Plan Your Route**: Study the level layout before making risky jumps
-- **Collect Everything**: Each level completion adds to your score
-
----
-
-## Technical Details
-
-### Game Architecture:
-- **Window**: 900x550 pixels
-- **Game Loop**: Timer-based update system (60 FPS target)
-- **Rendering**: Java Swing Graphics2D with custom drawing
-- **Physics**: Custom gravity and collision detection system
-
-### Key Classes:
-- `Platform`: Represents platforms with various properties
-- `Spike`: Hazard objects with optional chase behavior
-- `TutorialCard`: In-game tutorial system
-- `BodyPart`: Death animation particle system
-
----
 
 ## Credits
 
 Developed by: EYAS-VILLOCILLO Team
 Built with: Java & Swing
 Year: 2026
+
+Retro Jump SFX(jump.wav) - Driken5482
+Pixel Explosion(death.wav) - Lumora_Studios
+Yay SFX (win.wav) - Stock Audio
 
 ---
 
