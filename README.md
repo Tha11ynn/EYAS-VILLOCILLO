@@ -1,5 +1,6 @@
 # Eyas-Villocillo
-
+Eyas, Sophia Welynne S.
+Villocillo, Lovely June S.
 
 
 ## Game Title & Description
@@ -83,32 +84,32 @@ This game uses AI generation in the following:
 ## Screenshots of the Final Build
 
 ### Main Menu
-![Main Menu](./screenshots/main_menu.png)
+![Main Menu](EYAS-VILLOCILLO/pics/Main Menu.png)
 *The welcoming main menu with options to Start Game, Level Select, or Quit*
 
 ### Level Select
-![Level Select](./screenshots/level_select.png)
+![Level Select](EYAS-VILLOCILLO/pics/Level Select.png)
 *Choose your level: Tutorial through The Finale*
 
 ### Gameplay - Tutorial Level
-![Tutorial Level](./screenshots/tutorial_level.png)
+![Tutorial Level](EYAS-VILLOCILLO/pics/Tutorial.png)
 *The beginner-friendly first level to learn the basics*
 
-### Gameplay - Advanced Level
-![Advanced Level](./screenshots/advanced_level.png)
-*Later levels feature complex platform arrangements and hazards*
-
 ### Death Animation
-![Death Animation](./screenshots/death_animation.png)
+![Death Animation](EYAS-VILLOCILLO/pics/Death Animation.png)
 *Stylized particle effects when the player falls*
 
-### Pause Menu
-![Pause Menu](./screenshots/pause_menu.png)
-*In-game pause menu with resume, restart, and settings options*
+### Death Screen
+![Death Screen](EYAS-VILLOCILLO/pics/Death Screen.png)
+*Message that appears after player dies.*
 
-### Level Complete
-![Level Complete](./screenshots/level_complete.png)
-*Victory screen after successfully completing a level*
+### Settings
+![Settings](EYAS-VILLOCILLO/pics/Settings.png)
+*Menu with volume, brightness, and particle settings.*
+
+### Game Win
+![Game Win](EYAS-VILLOCILLO/pics/Winning Screen.png)
+*Victory screen after successfully completing all levels.*
 
 ---
 
