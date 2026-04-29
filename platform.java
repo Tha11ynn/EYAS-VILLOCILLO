@@ -50,9 +50,9 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ══════════════════════════════════════════════════════════════════════════
     // ══ STUDIO INTRO FIELDS ══
     // ══════════════════════════════════════════════════════════════════════════
-    static final int INTRO_FADE_IN   = 10;   // ticks to fade in
-    static final int INTRO_HOLD      = 40;   // ticks to hold full opacity
-    static final int INTRO_FADE_OUT  = 10;   // ticks to fade out
+    static final int INTRO_FADE_IN   = 15;   // ticks to fade in
+    static final int INTRO_HOLD      = 190;  // ticks to hold full opacity
+    static final int INTRO_FADE_OUT  = 15;   // ticks to fade out
     static final int INTRO_TOTAL     = INTRO_FADE_IN + INTRO_HOLD + INTRO_FADE_OUT;
     static final int MENU_FADE_IN_TICKS = 60; // ticks to fade menu in
     int introTimer = 0;
