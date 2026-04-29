@@ -343,6 +343,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         winTimer=0; levelTimer=0;
         deathAnimTimer=0; screenShakeTick=0;
         currentPlatform=null;
+        goalSwitchMessageShown=false; goalSwitchMessageTimer=0;
         leftDown=false; rightDown=false; jumpDown=false; jumpConsumed=false;
         switch(lvl) {
             case 0 -> buildLevel1();
@@ -369,6 +370,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         winTimer=0; levelTimer=0;
         deathAnimTimer=0; screenShakeTick=0;
         currentPlatform=null;
+        goalSwitchMessageShown=false; goalSwitchMessageTimer=0;
         leftDown=false; rightDown=false; jumpDown=false; jumpConsumed=false;
         switch(lvl) {
             case 0 -> buildLevel1();
@@ -570,10 +572,15 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     }
 
     boolean goalSwitched = false;
+    boolean goalSwitchMessageShown = false;
+    int goalSwitchMessageTimer = 0;
+    static final int GOAL_SWITCH_MESSAGE_DURATION = 240;
 
     void buildLevel5() {
         levelW = 4400;
         goalSwitched = false;
+        goalSwitchMessageShown = false;
+        goalSwitchMessageTimer = 0;
         addPlatform(0, H-50, 260, 50); addPlatform(360, H-50, 200, 50);
         addPlatform(640, H-50, 200, 50); addPlatform(920, H-50, 200, 50);
         addPlatform(1200, H-50, 200, 50); addPlatform(1480, H-50, 200, 50);
@@ -870,6 +877,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         if (currentLevel == 4 && !goalSwitched && px > 3700) {
             goalSwitched = true;
+            goalSwitchMessageShown = true;
+            goalSwitchMessageTimer = GOAL_SWITCH_MESSAGE_DURATION;
             goalX = 100; goalY = H - 110;
             for (Spike s : spikes) {
                 if (s.chasing) { s.cx = levelW + 200; s.cspeed = -1.6f; }
@@ -2446,6 +2455,17 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         g.setFont(new Font("Courier New", Font.PLAIN, 11));
         g.setColor(new Color(255,255,255,90));
         g.drawString("A/D: Move   SPACE: Jump   R: Restart   ESC: Pause", W/2-190, H-10);
+        
+        // Draw goal switch message
+        if(goalSwitchMessageShown && goalSwitchMessageTimer > 0) {
+            float alpha = (float)goalSwitchMessageTimer / GOAL_SWITCH_MESSAGE_DURATION;
+            g.setFont(new Font("Courier New", Font.ITALIC, 28));
+            String msg = "Maybe it's time to go back?";
+            g.setColor(new Color(255, 180, 80, (int)(alpha * 220)));
+            int msgW = g.getFontMetrics().stringWidth(msg);
+            g.drawString(msg, W/2 - msgW/2, H/2 - 40);
+            goalSwitchMessageTimer--;
+        }
     }
 
     String getLevelName() {
