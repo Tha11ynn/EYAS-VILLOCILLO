@@ -105,6 +105,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     int coyoteTimer   = 0;
     int jumpBufferTimer = 0;
     boolean wasOnGround = false;
+    Platform currentPlatform = null;
 
     // ══════════════════════════════════════════════════════════════════════════
     // DEATH ANIMATION
@@ -191,6 +192,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     // ══════════════════════════════════════════════════════════════════════════
     static class Platform {
         int x, y, w, h;
+        int prevX, prevY;
         boolean fake;
         boolean bouncy;
         boolean moving;
@@ -207,6 +209,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
 
         Platform(int x, int y, int w, int h) {
             this.x = x; this.y = y; this.w = w; this.h = h;
+            this.prevX = x; this.prevY = y;
         }
         Rectangle rect() { return new Rectangle(x, y, w, h); }
     }
@@ -339,6 +342,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         coyoteTimer=0; jumpBufferTimer=0;
         winTimer=0; levelTimer=0;
         deathAnimTimer=0; screenShakeTick=0;
+        currentPlatform=null;
         leftDown=false; rightDown=false; jumpDown=false; jumpConsumed=false;
         switch(lvl) {
             case 0 -> buildLevel1();
@@ -364,6 +368,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         coyoteTimer=0; jumpBufferTimer=0;
         winTimer=0; levelTimer=0;
         deathAnimTimer=0; screenShakeTick=0;
+        currentPlatform=null;
         leftDown=false; rightDown=false; jumpDown=false; jumpConsumed=false;
         switch(lvl) {
             case 0 -> buildLevel1();
@@ -749,6 +754,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         if(jumpBufferTimer > 0 && canJump) {
             pvy = JUMP_VEL; jumpConsumed = true;
             jumpBufferTimer = 0; coyoteTimer = 0;
+            currentPlatform = null;
             spawnDust();
             playSFX(sfxJump);
         }
@@ -773,6 +779,8 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
 
         for(Platform p : platforms) {
+            p.prevX = p.x;
+            p.prevY = p.y;
             if(p.moving) {
                 p.x += p.mspeed * p.mdir;
                 if(p.x > p.mx + p.mrange) p.mdir = -1;
@@ -793,6 +801,16 @@ public class platform extends JPanel implements ActionListener, KeyListener {
         }
 
         onGround = false;
+        
+        // Apply movement from platform player was standing on last frame
+        if(currentPlatform != null) {
+            int platformDeltaX = currentPlatform.x - currentPlatform.prevX;
+            int platformDeltaY = currentPlatform.y - currentPlatform.prevY;
+            px += platformDeltaX;
+            py += platformDeltaY;
+        }
+        
+        currentPlatform = null;
         Rectangle pr = new Rectangle((int)px, (int)py, playerW, playerH);
         for(Platform p : platforms) {
             if(p.fake && p.fakeTimer > 50) continue;
@@ -804,7 +822,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
                     pvy = JUMP_VEL * 1.5f;
                     spawnBounceParticles((int)px, (int)py);
                 } else {
-                    pvy = 0; onGround = true;
+                    pvy = 0; onGround = true; currentPlatform = p;
                     if(p.fake && !p.fakeTriggered) p.fakeTriggered = true;
                     if(p.shiftOnStep && !p.shiftTriggered) p.shiftTriggered = true;
                     if(p.invisible) { p.revealTimer_active = true; p.revealFlash = 45; }
@@ -892,6 +910,7 @@ public class platform extends JPanel implements ActionListener, KeyListener {
     void killPlayer(String l1, String l2, String tag) {
         if(state == State.DEAD || state == State.DYING) return;
         deaths++; levelDeathsTotal++;
+        currentPlatform = null;
         if(l1 != null && l2 != null && tag != null) {
             currentDeathMsg = new String[]{l1, l2, tag};
         } else {
